@@ -25,8 +25,9 @@ export default function DashboardPage() {
   const navigate = useNavigate();
 
   const handleGameClick = (gameId: string) => {
-    // For now, just show a toast or navigate
-    console.log("Selected game:", gameId);
+    if (gameId === "freefire") {
+      navigate("/tournament/freefire");
+    }
   };
 
   return (
