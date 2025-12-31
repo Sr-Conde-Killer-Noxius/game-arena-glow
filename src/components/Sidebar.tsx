@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -30,6 +31,10 @@ const menuItems = [
 
 export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const location = useLocation();
+  const { isAdmin } = useAuth();
+
+  // Filter menu items based on admin status
+  const visibleMenuItems = menuItems.filter(item => !item.adminOnly || isAdmin);
 
   return (
     <>
@@ -76,7 +81,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
         {/* Navigation */}
         <nav className="flex-1 py-6 px-3">
           <ul className="space-y-2">
-            {menuItems.map((item) => {
+            {visibleMenuItems.map((item) => {
               const isActive = location.pathname === item.path;
               const Icon = item.icon;
 
