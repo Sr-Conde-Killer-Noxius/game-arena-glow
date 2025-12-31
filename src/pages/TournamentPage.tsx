@@ -374,7 +374,7 @@ export default function TournamentPage() {
                       {/* Description */}
                       {tournament.description && (
                         <div>
-                          <p className="text-muted-foreground">
+                          <p className="text-muted-foreground whitespace-pre-line">
                             {tournament.description}
                           </p>
                         </div>
