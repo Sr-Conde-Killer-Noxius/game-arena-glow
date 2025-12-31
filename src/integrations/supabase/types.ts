@@ -190,6 +190,24 @@ export type Database = {
           },
         ]
       }
+      tournament_participant_counts: {
+        Row: {
+          paid_count: number
+          tournament_id: string
+          updated_at: string
+        }
+        Insert: {
+          paid_count?: number
+          tournament_id: string
+          updated_at?: string
+        }
+        Update: {
+          paid_count?: number
+          tournament_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tournaments: {
         Row: {
           banner_url: string | null
@@ -306,6 +324,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _refresh_tournament_participant_count: {
+        Args: { _tournament_id: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

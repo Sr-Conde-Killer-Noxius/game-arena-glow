@@ -112,18 +112,21 @@ export default function TournamentPage() {
 
       setTournaments(data || []);
 
-      // Fetch participant counts for each tournament
+      // Fetch participant counts from public counters table
       if (data && data.length > 0) {
-        const counts: Record<string, number> = {};
-        for (const tournament of data) {
-          const { count } = await supabase
-            .from("participations")
-            .select("*", { count: "exact", head: true })
-            .eq("tournament_id", tournament.id)
-            .eq("payment_status", "paid");
-          counts[tournament.id] = count || 0;
+        const tournamentIds = data.map((t) => t.id);
+        const { data: countsData } = await supabase
+          .from("tournament_participant_counts")
+          .select("tournament_id, paid_count")
+          .in("tournament_id", tournamentIds);
+
+        if (countsData) {
+          const counts: Record<string, number> = {};
+          countsData.forEach((c) => {
+            counts[c.tournament_id] = c.paid_count;
+          });
+          setParticipantCounts(counts);
         }
-        setParticipantCounts(counts);
       }
 
       setIsLoading(false);
@@ -132,38 +135,32 @@ export default function TournamentPage() {
     fetchTournaments();
   }, [gameId]);
 
-  // Realtime subscription for participant counts
+  // Realtime subscription for participant counts (public table)
   useEffect(() => {
     if (tournaments.length === 0) return;
 
-    const tournamentIds = tournaments.map(t => t.id);
+    const tournamentIds = tournaments.map((t) => t.id);
 
     const channel = supabase
-      .channel('participations-changes')
+      .channel('tournament-counts-realtime')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'participations',
+          table: 'tournament_participant_counts',
         },
-        async (payload) => {
-          const newRecord = payload.new as { tournament_id?: string; payment_status?: string };
-          const oldRecord = payload.old as { tournament_id?: string; payment_status?: string };
-          
-          const affectedTournamentId = newRecord?.tournament_id || oldRecord?.tournament_id;
-          
-          if (affectedTournamentId && tournamentIds.includes(affectedTournamentId)) {
-            // Refetch count for this specific tournament
-            const { count } = await supabase
-              .from("participations")
-              .select("*", { count: "exact", head: true })
-              .eq("tournament_id", affectedTournamentId)
-              .eq("payment_status", "paid");
-            
-            setParticipantCounts(prev => ({
+        (payload) => {
+          const record = (payload.new || payload.old) as {
+            tournament_id?: string;
+            paid_count?: number;
+          };
+
+          if (record?.tournament_id && tournamentIds.includes(record.tournament_id)) {
+            const newCount = payload.eventType === 'DELETE' ? 0 : record.paid_count ?? 0;
+            setParticipantCounts((prev) => ({
               ...prev,
-              [affectedTournamentId]: count || 0
+              [record.tournament_id!]: newCount,
             }));
           }
         }
