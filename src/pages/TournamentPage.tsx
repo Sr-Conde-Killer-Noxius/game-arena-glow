@@ -73,7 +73,7 @@ const defaultRules = [
 ];
 
 const defaultRequirements = [
-  "Seguir @jpgesports no Instagram",
+  "Seguir @jogapraganhar no Instagram",
   "Entrar no canal e no grupo do WhatsApp da JPG",
   "Ter conta verificada no jogo",
   "Aceitar os termos e regras do torneio",
