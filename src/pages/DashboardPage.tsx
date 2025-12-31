@@ -1,8 +1,10 @@
 import { useNavigate } from "react-router-dom";
 import { GameCard } from "@/components/GameCard";
-import { Bell, Search, User } from "lucide-react";
+import { Bell, Search, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 // Import game images
 import freefireImg from "@/assets/games/freefire.jpg";
@@ -23,12 +25,21 @@ const games = [
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
 
   const handleGameClick = (gameId: string) => {
     if (gameId === "freefire") {
       navigate("/tournament/freefire");
     }
   };
+
+  const handleLogout = async () => {
+    await signOut();
+    toast.success("Logout realizado com sucesso!");
+    navigate("/");
+  };
+
+  const displayName = user?.user_metadata?.username || user?.email?.split("@")[0] || "Jogador";
 
   return (
     <div className="min-h-screen bg-background">
@@ -62,6 +73,11 @@ export default function DashboardPage() {
           <Button variant="ghost" size="icon">
             <User size={20} />
           </Button>
+
+          {/* Logout */}
+          <Button variant="ghost" size="icon" onClick={handleLogout}>
+            <LogOut size={20} />
+          </Button>
         </div>
       </header>
 
@@ -70,7 +86,7 @@ export default function DashboardPage() {
         {/* Welcome Section */}
         <div className="mb-10">
           <h2 className="font-display text-3xl md:text-4xl font-bold mb-2">
-            Olá, <span className="text-primary">Jogador</span>!
+            Olá, <span className="text-primary">{displayName}</span>!
           </h2>
           <p className="text-muted-foreground text-lg">
             Escolha seu jogo e comece a competir.
