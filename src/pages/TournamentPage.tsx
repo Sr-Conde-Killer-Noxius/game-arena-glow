@@ -581,14 +581,13 @@ export default function TournamentPage() {
                     <span className="text-muted-foreground">
                       Entre no grupo do WhatsApp e aguarde o dia do torneio
                     </span>
-                  </li>
-                  </li>
+                  </li>                  
                   <li className="flex gap-3">
                     <span className="w-6 h-6 bg-primary/20 text-primary rounded-full flex items-center justify-center font-bold text-xs shrink-0">
                       5
                     </span>
                     <span className="text-muted-foreground">
-                      Aguarde o envio do ID e Senha no seu WhatsApp
+                      Aguarde o envio do ID e Senha da sala no seu WhatsApp
                     </span>
                   </li>
                 </ol>
