@@ -6,11 +6,10 @@ import {
   BarChart3,
   Users,
   Menu,
-  X,
   ChevronLeft,
   Ticket,
+  Shield,
 } from "lucide-react";
-import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -22,8 +21,9 @@ interface SidebarProps {
 const menuItems = [
   { icon: Gamepad2, label: "Jogos", path: "/dashboard", active: true },
   { icon: Ticket, label: "Meus Ingressos", path: "/my-tickets", active: true },
+  { icon: User, label: "Perfil", path: "/profile", active: true },
+  { icon: Shield, label: "Admin", path: "/admin", active: true, adminOnly: true },
   { icon: Trophy, label: "Torneios", path: "/tournaments", active: false },
-  { icon: User, label: "Perfil", path: "/profile", active: false },
   { icon: BarChart3, label: "Ranking", path: "/ranking", active: false },
   { icon: Users, label: "JPG Social", path: "/social", active: false },
 ];
