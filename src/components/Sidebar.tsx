@@ -8,6 +8,7 @@ import {
   Menu,
   X,
   ChevronLeft,
+  Ticket,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ interface SidebarProps {
 
 const menuItems = [
   { icon: Gamepad2, label: "Jogos", path: "/dashboard", active: true },
+  { icon: Ticket, label: "Meus Ingressos", path: "/my-tickets", active: true },
   { icon: Trophy, label: "Torneios", path: "/tournaments", active: false },
   { icon: User, label: "Perfil", path: "/profile", active: false },
   { icon: BarChart3, label: "Ranking", path: "/ranking", active: false },
