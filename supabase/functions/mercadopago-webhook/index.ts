@@ -26,8 +26,69 @@ function extractHeaders(req: Request): Record<string, string> {
   return headers;
 }
 
+// Validate Mercado Pago webhook signature
+async function validateSignature(
+  xSignature: string,
+  xRequestId: string,
+  dataId: string,
+  secret: string
+): Promise<boolean> {
+  try {
+    // Parse x-signature header: ts=xxx,v1=xxx
+    const parts: Record<string, string> = {};
+    xSignature.split(",").forEach((part) => {
+      const [key, value] = part.split("=");
+      if (key && value) {
+        parts[key.trim()] = value.trim();
+      }
+    });
+
+    const ts = parts["ts"];
+    const v1 = parts["v1"];
+
+    if (!ts || !v1) {
+      console.log("Missing ts or v1 in signature");
+      return false;
+    }
+
+    // Build the manifest string
+    // template: id:[data.id];request-id:[x-request-id];ts:[ts];
+    const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
+    console.log("Manifest for HMAC:", manifest);
+
+    // Create HMAC-SHA256
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+
+    const signatureBytes = await crypto.subtle.sign(
+      "HMAC",
+      key,
+      encoder.encode(manifest)
+    );
+
+    // Convert to hex
+    const computedSignature = Array.from(new Uint8Array(signatureBytes))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    console.log("Computed signature:", computedSignature);
+    console.log("Received v1:", v1);
+
+    return computedSignature === v1;
+  } catch (error) {
+    console.error("Error validating signature:", error);
+    return false;
+  }
+}
+
 serve(async (req) => {
-  // Initialize Supabase client at the very start
+  // Initialize Supabase client
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
@@ -51,8 +112,8 @@ serve(async (req) => {
     errorMessage?: string
   ) => {
     try {
-      console.log(`[WEBHOOK LOG] ${method} from ${source} - Status: ${statusCode}`);
-      const { error } = await supabaseClient.from("webhook_logs").insert({
+      console.log(`[LOG] ${method} ${source} -> ${statusCode}`);
+      await supabaseClient.from("webhook_logs").insert({
         source,
         method,
         headers,
@@ -62,96 +123,106 @@ serve(async (req) => {
         response,
         error_message: errorMessage,
       });
-      if (error) {
-        console.error("Failed to save webhook log:", error);
-      } else {
-        console.log("Webhook log saved successfully");
-      }
     } catch (e) {
-      console.error("Exception saving webhook log:", e);
+      console.error("Failed to save log:", e);
     }
   };
 
-  console.log("=== WEBHOOK REQUEST RECEIVED ===");
+  console.log("========================================");
+  console.log("WEBHOOK REQUEST RECEIVED");
   console.log("Method:", req.method);
   console.log("URL:", req.url);
-  console.log("Headers:", JSON.stringify(reqHeaders));
+  console.log("Headers:", JSON.stringify(reqHeaders, null, 2));
+  console.log("========================================");
 
-  // Handle CORS preflight
+  // Handle CORS preflight - return 200 immediately
   if (req.method === "OPTIONS") {
-    console.log("Handling OPTIONS preflight request");
-    await logWebhook("mercadopago", "OPTIONS", reqHeaders, null, 200, { message: "CORS preflight" });
+    await logWebhook("mercadopago", "OPTIONS", reqHeaders, null, 200, { cors: true });
     return new Response(null, { headers: corsHeaders, status: 200 });
   }
 
-  let body: unknown = null;
-  let statusCode = 200;
-  let responseData: unknown = { received: true };
-  let errorMessage: string | undefined;
+  // Read body immediately
+  const rawBody = await req.text();
+  console.log("Raw body:", rawBody);
+
+  // ALWAYS return 200 to Mercado Pago to prevent retries
+  const successResponse = () =>
+    new Response(JSON.stringify({ received: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+    });
 
   try {
-    // Read raw body first
-    const rawBody = await req.text();
-    console.log("Raw body length:", rawBody.length);
-    console.log("Raw body:", rawBody.substring(0, 500));
-
-    // Handle empty body
+    // Handle empty body (verification request from MP)
     if (!rawBody || rawBody.trim() === "") {
-      console.log("Empty body received");
-      statusCode = 200;
-      responseData = { received: true, message: "Empty body acknowledged" };
-      await logWebhook("mercadopago", req.method, reqHeaders, { raw: "EMPTY" }, statusCode, responseData);
-      return new Response(JSON.stringify(responseData), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: statusCode,
-      });
+      console.log("Empty body - verification request");
+      await logWebhook("mercadopago", req.method, reqHeaders, null, 200, { type: "verification" });
+      return successResponse();
     }
 
-    // Try to parse JSON
+    // Parse body
+    let body: Record<string, unknown>;
     try {
       body = JSON.parse(rawBody);
-      console.log("Parsed body:", JSON.stringify(body));
-    } catch (parseError) {
-      console.error("JSON parse error:", parseError);
-      statusCode = 200; // Still return 200 to acknowledge
-      responseData = { received: true, error: "Invalid JSON", raw_preview: rawBody.substring(0, 200) };
-      await logWebhook("mercadopago", req.method, reqHeaders, { raw: rawBody }, statusCode, responseData, "Invalid JSON body");
-      return new Response(JSON.stringify(responseData), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: statusCode,
-      });
+    } catch {
+      console.log("Invalid JSON body");
+      await logWebhook("mercadopago", req.method, reqHeaders, { raw: rawBody }, 200, { error: "invalid_json" });
+      return successResponse();
     }
 
-    const webhookBody = body as Record<string, unknown>;
-    
-    // Log all webhook notifications
-    console.log("Webhook type:", webhookBody.type);
-    console.log("Webhook action:", webhookBody.action);
+    console.log("Parsed body:", JSON.stringify(body, null, 2));
 
-    // Check if this is a payment notification
-    if (webhookBody.type !== "payment" && webhookBody.action !== "payment.updated" && webhookBody.action !== "payment.created") {
-      console.log("Non-payment notification, acknowledging");
-      responseData = { received: true, ignored: true, reason: "non-payment notification", type: webhookBody.type, action: webhookBody.action };
-      await logWebhook("mercadopago", req.method, reqHeaders, body, statusCode, responseData);
-      return new Response(JSON.stringify(responseData), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: statusCode,
-      });
+    // Get signature headers
+    const xSignature = reqHeaders["x-signature"] || "";
+    const xRequestId = reqHeaders["x-request-id"] || "";
+    const webhookSecret = Deno.env.get("MP_WEBHOOK_SECRET") || "";
+
+    console.log("x-signature:", xSignature);
+    console.log("x-request-id:", xRequestId);
+    console.log("Has webhook secret:", !!webhookSecret);
+
+    // Get data.id for signature validation
+    const dataId = (body.data as Record<string, unknown>)?.id?.toString() || queryParams["data.id"] || "";
+    console.log("data.id:", dataId);
+
+    // Validate signature if secret is configured
+    if (webhookSecret && xSignature) {
+      const isValid = await validateSignature(xSignature, xRequestId, dataId, webhookSecret);
+      console.log("Signature valid:", isValid);
+
+      if (!isValid) {
+        console.log("INVALID SIGNATURE - rejecting but returning 200");
+        await logWebhook("mercadopago", req.method, reqHeaders, body, 200, { error: "invalid_signature" }, "Invalid webhook signature");
+        return successResponse();
+      }
+      console.log("Signature validated successfully!");
+    } else if (webhookSecret) {
+      console.log("WARNING: Secret configured but no x-signature header received");
+    } else {
+      console.log("WARNING: No webhook secret configured - skipping signature validation");
+    }
+
+    // Log the webhook
+    await logWebhook("mercadopago", req.method, reqHeaders, body, 200, { processing: true });
+
+    // Check notification type
+    const notificationType = body.type || body.action;
+    console.log("Notification type:", notificationType);
+
+    if (notificationType !== "payment" && 
+        body.action !== "payment.updated" && 
+        body.action !== "payment.created") {
+      console.log("Non-payment notification, ignoring");
+      await logWebhook("mercadopago", req.method, reqHeaders, body, 200, { ignored: true, type: notificationType });
+      return successResponse();
     }
 
     // Get payment ID
-    const data = webhookBody.data as Record<string, unknown> | undefined;
-    const paymentId = data?.id;
-    
+    const paymentId = (body.data as Record<string, unknown>)?.id;
     if (!paymentId) {
       console.log("No payment ID found");
-      statusCode = 200;
-      responseData = { received: true, error: "No payment ID in body" };
-      await logWebhook("mercadopago", req.method, reqHeaders, body, statusCode, responseData, "No payment ID");
-      return new Response(JSON.stringify(responseData), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: statusCode,
-      });
+      await logWebhook("mercadopago", req.method, reqHeaders, body, 200, { error: "no_payment_id" });
+      return successResponse();
     }
 
     console.log("Processing payment ID:", paymentId);
@@ -160,54 +231,44 @@ serve(async (req) => {
     const accessToken = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN");
     if (!accessToken) {
       console.error("Missing MERCADOPAGO_ACCESS_TOKEN");
-      statusCode = 500;
-      responseData = { error: "Payment service not configured" };
-      await logWebhook("mercadopago", req.method, reqHeaders, body, statusCode, responseData, "Missing access token");
-      return new Response(JSON.stringify(responseData), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: statusCode,
-      });
+      await logWebhook("mercadopago", req.method, reqHeaders, body, 200, { error: "no_access_token" }, "Missing access token");
+      return successResponse();
     }
 
-    // Fetch payment from Mercado Pago
-    console.log("Fetching payment details from MP...");
+    // Fetch payment from Mercado Pago API
+    console.log("Fetching payment details from Mercado Pago...");
     const mpResponse = await fetch(
       `https://api.mercadopago.com/v1/payments/${paymentId}`,
-      {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      }
+      { headers: { Authorization: `Bearer ${accessToken}` } }
     );
 
     if (!mpResponse.ok) {
       const mpError = await mpResponse.text();
-      console.error("MP API error:", mpError);
-      statusCode = 200;
-      responseData = { received: true, mp_error: mpError, payment_id: paymentId };
-      await logWebhook("mercadopago", req.method, reqHeaders, body, statusCode, responseData, `MP API error: ${mpError}`);
-      return new Response(JSON.stringify(responseData), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: statusCode,
-      });
+      console.error("MP API error:", mpResponse.status, mpError);
+      await logWebhook("mercadopago", req.method, reqHeaders, body, 200, { mp_error: mpError, mp_status: mpResponse.status });
+      return successResponse();
     }
 
     const payment = await mpResponse.json();
-    console.log("Payment status from MP:", payment.status);
-    console.log("External reference:", payment.external_reference);
+    console.log("Payment from MP:", JSON.stringify({
+      id: payment.id,
+      status: payment.status,
+      external_reference: payment.external_reference,
+      transaction_amount: payment.transaction_amount,
+    }));
 
     const participationId = payment.external_reference;
-    
     if (!participationId) {
-      console.log("No external reference in payment");
-      statusCode = 200;
-      responseData = { received: true, warning: "No external reference", payment_id: paymentId, mp_status: payment.status };
-      await logWebhook("mercadopago", req.method, reqHeaders, body, statusCode, responseData, "No external reference");
-      return new Response(JSON.stringify(responseData), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: statusCode,
+      console.log("No external_reference in payment");
+      await logWebhook("mercadopago", req.method, reqHeaders, body, 200, { 
+        warning: "no_external_reference", 
+        payment_id: paymentId,
+        mp_status: payment.status 
       });
+      return successResponse();
     }
 
-    // Map status
+    // Map Mercado Pago status to our status
     let newStatus: string;
     switch (payment.status) {
       case "approved":
@@ -228,7 +289,7 @@ serve(async (req) => {
         newStatus = "pending";
     }
 
-    console.log("Updating participation to status:", newStatus);
+    console.log("Updating participation", participationId, "to status:", newStatus);
 
     // Update participation
     const updateData: Record<string, unknown> = {
@@ -248,37 +309,28 @@ serve(async (req) => {
 
     if (updateError) {
       console.error("Update error:", updateError);
-      statusCode = 200;
-      responseData = { received: true, update_error: updateError.message, participation_id: participationId };
-      await logWebhook("mercadopago", req.method, reqHeaders, body, statusCode, responseData, updateError.message);
+      await logWebhook("mercadopago", req.method, reqHeaders, body, 200, { 
+        error: "update_failed", 
+        message: updateError.message,
+        participation_id: participationId 
+      }, updateError.message);
     } else {
-      console.log("Participation updated successfully!");
-      responseData = { 
+      console.log("SUCCESS! Participation updated to:", newStatus);
+      await logWebhook("mercadopago", req.method, reqHeaders, body, 200, { 
         success: true, 
-        status: newStatus, 
+        new_status: newStatus,
         participation_id: participationId,
-        payment_id: paymentId,
-        mp_status: payment.status
-      };
-      await logWebhook("mercadopago", req.method, reqHeaders, body, statusCode, responseData);
+        payment_id: paymentId
+      });
     }
 
-    return new Response(JSON.stringify(responseData), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: statusCode,
-    });
+    return successResponse();
 
   } catch (error: unknown) {
-    errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error("Webhook exception:", errorMessage);
-    statusCode = 500;
-    responseData = { error: errorMessage };
-    
-    await logWebhook("mercadopago", req.method, reqHeaders, body, statusCode, responseData, errorMessage);
-    
-    return new Response(JSON.stringify(responseData), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: statusCode,
-    });
+    await logWebhook("mercadopago", req.method, reqHeaders, { raw: rawBody }, 200, { exception: errorMessage }, errorMessage);
+    // Still return 200 to prevent MP retries
+    return successResponse();
   }
 });
