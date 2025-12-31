@@ -154,44 +154,84 @@ export function TicketPurchaseModal({
         return;
       }
 
-      // Upload screenshots
-      const [gameProfileUrl, instagramUrl, whatsappUrl, discordUrl] = await Promise.all([
-        uploadFile(formData.gameProfile!, user.id, "game-profile"),
-        uploadFile(formData.instagramProof!, user.id, "instagram-proof"),
-        uploadFile(formData.whatsappProof!, user.id, "whatsapp-proof"),
-        formData.discordProfile ? uploadFile(formData.discordProfile, user.id, "discord-profile") : null,
-      ]);
-
-      // Create participation record
-      const { data: participation, error: participationError } = await supabase
+      // Check if user already has a pending participation for this tournament
+      const { data: existingParticipation } = await supabase
         .from("participations")
-        .insert({
-          user_id: user.id,
-          tournament_id: tournamentId,
-          payment_status: "pending",
-          screenshot_1_url: gameProfileUrl,
-          screenshot_2_url: instagramUrl,
-          screenshot_3_url: whatsappUrl,
-          screenshot_4_url: discordUrl,
-        })
-        .select()
-        .single();
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("tournament_id", tournamentId)
+        .maybeSingle();
 
-      if (participationError) {
-        console.error("Error creating participation:", participationError);
-        toast.error("Erro ao criar inscrição. Tente novamente.");
+      // If user already paid for this tournament, show message
+      if (existingParticipation && existingParticipation.payment_status === "paid") {
+        toast.error("Você já tem um ingresso pago para este torneio!");
         setIsSubmitting(false);
         return;
       }
 
-      setParticipationId(participation.id);
+      let currentParticipationId = existingParticipation?.id;
+
+      // Only create new participation if one doesn't exist
+      if (!existingParticipation) {
+        // Upload screenshots
+        const [gameProfileUrl, instagramUrl, whatsappUrl, discordUrl] = await Promise.all([
+          uploadFile(formData.gameProfile!, user.id, "game-profile"),
+          uploadFile(formData.instagramProof!, user.id, "instagram-proof"),
+          uploadFile(formData.whatsappProof!, user.id, "whatsapp-proof"),
+          formData.discordProfile ? uploadFile(formData.discordProfile, user.id, "discord-profile") : null,
+        ]);
+
+        // Create participation record
+        const { data: participation, error: participationError } = await supabase
+          .from("participations")
+          .insert({
+            user_id: user.id,
+            tournament_id: tournamentId,
+            payment_status: "pending",
+            screenshot_1_url: gameProfileUrl,
+            screenshot_2_url: instagramUrl,
+            screenshot_3_url: whatsappUrl,
+            screenshot_4_url: discordUrl,
+          })
+          .select()
+          .single();
+
+        if (participationError) {
+          console.error("Error creating participation:", participationError);
+          toast.error("Erro ao criar inscrição. Tente novamente.");
+          setIsSubmitting(false);
+          return;
+        }
+
+        currentParticipationId = participation.id;
+      } else {
+        // Update existing participation with new screenshots if needed
+        const [gameProfileUrl, instagramUrl, whatsappUrl, discordUrl] = await Promise.all([
+          uploadFile(formData.gameProfile!, user.id, "game-profile"),
+          uploadFile(formData.instagramProof!, user.id, "instagram-proof"),
+          uploadFile(formData.whatsappProof!, user.id, "whatsapp-proof"),
+          formData.discordProfile ? uploadFile(formData.discordProfile, user.id, "discord-profile") : null,
+        ]);
+
+        await supabase
+          .from("participations")
+          .update({
+            screenshot_1_url: gameProfileUrl,
+            screenshot_2_url: instagramUrl,
+            screenshot_3_url: whatsappUrl,
+            screenshot_4_url: discordUrl,
+          })
+          .eq("id", existingParticipation.id);
+      }
+
+      setParticipationId(currentParticipationId!);
 
       // Create PIX payment
       const { data: paymentData, error: paymentError } = await supabase.functions.invoke(
         "create-pix-payment",
         {
           body: {
-            participationId: participation.id,
+            participationId: currentParticipationId,
             amount: price,
             description: `Ingresso ${ticketType === "duo" ? "Dupla" : "Individual"} - ${tournamentName}`,
             payerEmail: formData.email,
@@ -201,8 +241,8 @@ export function TicketPurchaseModal({
         }
       );
 
-      if (paymentError || !paymentData.success) {
-        console.error("Payment error:", paymentError || paymentData.error);
+      if (paymentError || !paymentData?.success) {
+        console.error("Payment error:", paymentError || paymentData?.error);
         toast.error("Erro ao gerar PIX. Tente novamente.");
         setIsSubmitting(false);
         return;
