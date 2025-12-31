@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Save, Eye, EyeOff, RefreshCw, CreditCard, Zap, Copy, Check, X } from "lucide-react";
+import { Save, Eye, EyeOff, RefreshCw, CreditCard, Zap, Copy, Check } from "lucide-react";
+import { WebhookLogsTab } from "./WebhookLogsTab";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -323,6 +324,11 @@ export function IntegrationsTab() {
             Eventos suportados: <code className="bg-muted px-1 rounded">payment.created</code>,{" "}
             <code className="bg-muted px-1 rounded">payment.updated</code>
           </p>
+        </div>
+
+        {/* Webhook Logs Section */}
+        <div className="mt-6 pt-6 border-t border-border">
+          <WebhookLogsTab />
         </div>
       </div>
 
