@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, RefreshCw, Edit2, Ban, CheckCircle } from "lucide-react";
+import { Search, RefreshCw, Edit2, Ban, CheckCircle, Shield, ShieldOff, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import type { Database } from "@/integrations/supabase/types";
 
 type UserRank = Database["public"]["Enums"]["user_rank"];
+type AppRole = Database["public"]["Enums"]["app_role"];
 
 interface Profile {
   id: string;
@@ -38,17 +39,26 @@ interface Profile {
   created_at: string;
 }
 
+interface UserRole {
+  user_id: string;
+  role: AppRole;
+}
+
 const RANKS: UserRank[] = ["D", "C", "B", "A", "S", "PRO"];
 
 export function UsersTab() {
   const [users, setUsers] = useState<Profile[]>([]);
+  const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [editingUser, setEditingUser] = useState<Profile | null>(null);
   const [newRank, setNewRank] = useState<UserRank>("D");
+  const [passwordDialog, setPasswordDialog] = useState<Profile | null>(null);
+  const [newPassword, setNewPassword] = useState("");
 
   useEffect(() => {
     fetchUsers();
+    fetchUserRoles();
   }, []);
 
   const fetchUsers = async () => {
@@ -66,6 +76,53 @@ export function UsersTab() {
       toast.error("Erro ao carregar usuários");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchUserRoles = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("user_id, role");
+
+      if (error) throw error;
+      setUserRoles((data as UserRole[]) || []);
+    } catch (err) {
+      console.error("Error fetching user roles:", err);
+    }
+  };
+
+  const isAdmin = (userId: string) => {
+    return userRoles.some((r) => r.user_id === userId && r.role === "admin");
+  };
+
+  const toggleAdminRole = async (user: Profile) => {
+    const hasAdmin = isAdmin(user.id);
+    const action = hasAdmin ? "remover admin de" : "tornar admin";
+    if (!confirm(`Tem certeza que deseja ${action} este usuário?`)) return;
+
+    try {
+      if (hasAdmin) {
+        const { error } = await supabase
+          .from("user_roles")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("role", "admin");
+
+        if (error) throw error;
+        toast.success("Cargo de admin removido!");
+      } else {
+        const { error } = await supabase
+          .from("user_roles")
+          .insert({ user_id: user.id, role: "admin" });
+
+        if (error) throw error;
+        toast.success("Usuário promovido a admin!");
+      }
+      fetchUserRoles();
+    } catch (err) {
+      console.error("Error toggling admin role:", err);
+      toast.error("Erro ao alterar cargo");
     }
   };
 
@@ -175,6 +232,9 @@ export function UsersTab() {
                   Stats
                 </th>
                 <th className="text-left p-4 font-medium text-muted-foreground">
+                  Cargo
+                </th>
+                <th className="text-left p-4 font-medium text-muted-foreground">
                   Status
                 </th>
                 <th className="text-left p-4 font-medium text-muted-foreground">
@@ -185,13 +245,13 @@ export function UsersTab() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center">
+                  <td colSpan={7} className="p-8 text-center">
                     <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                  <td colSpan={7} className="p-8 text-center text-muted-foreground">
                     Nenhum usuário encontrado
                   </td>
                 </tr>
@@ -236,6 +296,17 @@ export function UsersTab() {
                       </p>
                     </td>
                     <td className="p-4">
+                      {isAdmin(user.id) ? (
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-500">
+                          Admin
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                          Player
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-4">
                       {user.is_banned ? (
                         <span className="px-2 py-1 rounded-full text-xs font-medium bg-destructive/10 text-destructive">
                           Banido
@@ -248,6 +319,20 @@ export function UsersTab() {
                     </td>
                     <td className="p-4">
                       <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            "h-8 w-8",
+                            isAdmin(user.id)
+                              ? "text-amber-500 hover:bg-amber-500/10"
+                              : "text-muted-foreground hover:bg-muted"
+                          )}
+                          onClick={() => toggleAdminRole(user)}
+                          title={isAdmin(user.id) ? "Remover Admin" : "Tornar Admin"}
+                        >
+                          {isAdmin(user.id) ? <ShieldOff size={16} /> : <Shield size={16} />}
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"

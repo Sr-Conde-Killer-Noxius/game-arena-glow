@@ -6,6 +6,7 @@ import {
   Users,
   Trophy,
   Ticket,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,8 +16,9 @@ import { RevenueCard } from "@/components/admin/RevenueCard";
 import { TournamentsTab } from "@/components/admin/TournamentsTab";
 import { UsersTab } from "@/components/admin/UsersTab";
 import { TicketsTab } from "@/components/admin/TicketsTab";
+import { IntegrationsTab } from "@/components/admin/IntegrationsTab";
 
-type Tab = "dashboard" | "tournaments" | "users" | "tickets";
+type Tab = "dashboard" | "tournaments" | "users" | "tickets" | "integrations";
 
 interface RevenueData {
   totalRevenue: number;
@@ -162,6 +164,13 @@ export default function AdminPage() {
           <Users size={18} />
           Usuários
         </Button>
+        <Button
+          variant={activeTab === "integrations" ? "default" : "outline"}
+          onClick={() => setActiveTab("integrations")}
+        >
+          <Settings size={18} />
+          Integrações
+        </Button>
       </div>
 
       {/* Content */}
@@ -235,6 +244,7 @@ export default function AdminPage() {
       {activeTab === "tickets" && <TicketsTab />}
       {activeTab === "tournaments" && <TournamentsTab />}
       {activeTab === "users" && <UsersTab />}
+      {activeTab === "integrations" && <IntegrationsTab />}
     </div>
   );
 }
