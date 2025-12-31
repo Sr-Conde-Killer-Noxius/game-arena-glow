@@ -80,6 +80,7 @@ export type Database = {
           full_name: string | null
           hs_rate: number | null
           id: string
+          is_banned: boolean
           kda_global: number | null
           points: number | null
           rank: Database["public"]["Enums"]["user_rank"]
@@ -95,6 +96,7 @@ export type Database = {
           full_name?: string | null
           hs_rate?: number | null
           id: string
+          is_banned?: boolean
           kda_global?: number | null
           points?: number | null
           rank?: Database["public"]["Enums"]["user_rank"]
@@ -110,6 +112,7 @@ export type Database = {
           full_name?: string | null
           hs_rate?: number | null
           id?: string
+          is_banned?: boolean
           kda_global?: number | null
           points?: number | null
           rank?: Database["public"]["Enums"]["user_rank"]

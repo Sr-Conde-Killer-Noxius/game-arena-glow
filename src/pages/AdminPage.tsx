@@ -6,67 +6,43 @@ import {
   Users,
   Trophy,
   Ticket,
-  Plus,
-  Check,
-  X,
-  RefreshCw,
-  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { RevenueCard } from "@/components/admin/RevenueCard";
+import { TournamentsTab } from "@/components/admin/TournamentsTab";
+import { UsersTab } from "@/components/admin/UsersTab";
+import { TicketsTab } from "@/components/admin/TicketsTab";
 
-type Tab = "tournaments" | "participations";
+type Tab = "dashboard" | "tournaments" | "users" | "tickets";
 
-interface Tournament {
-  id: string;
-  name: string;
-  game: string;
-  start_date: string;
-  entry_fee: number;
-  prize_pool: number;
-  status: string;
-}
-
-interface Participation {
-  id: string;
-  user_id: string;
-  tournament_id: string;
-  unique_token: string;
-  payment_status: string;
-  created_at: string;
-  profiles: {
-    username: string | null;
-    full_name: string | null;
-  } | null;
-  tournaments: {
-    name: string;
-  } | null;
+interface RevenueData {
+  totalRevenue: number;
+  prizePool: number;
+  platformRevenue: number;
+  totalParticipations: number;
 }
 
 export default function AdminPage() {
   const { user } = useAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>("participations");
-  const [tournaments, setTournaments] = useState<Tournament[]>([]);
-  const [participations, setParticipations] = useState<Participation[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+  const [revenueData, setRevenueData] = useState<RevenueData>({
+    totalRevenue: 0,
+    prizePool: 0,
+    platformRevenue: 0,
+    totalParticipations: 0,
+  });
 
   useEffect(() => {
     checkAdminStatus();
   }, [user]);
 
   useEffect(() => {
-    if (isAdmin) {
-      if (activeTab === "tournaments") {
-        fetchTournaments();
-      } else {
-        fetchParticipations();
-      }
+    if (isAdmin && activeTab === "dashboard") {
+      fetchRevenueData();
     }
   }, [isAdmin, activeTab]);
 
@@ -90,125 +66,38 @@ export default function AdminPage() {
     }
   };
 
-  const fetchTournaments = async () => {
-    setIsLoading(true);
+  const fetchRevenueData = async () => {
     try {
-      const { data, error } = await supabase
-        .from("tournaments")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setTournaments(data || []);
-    } catch (err) {
-      console.error("Error fetching tournaments:", err);
-      toast.error("Erro ao carregar torneios");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchParticipations = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
+      // Get all paid participations with their tournament entry fees
+      const { data: participations, error } = await supabase
         .from("participations")
         .select(`
-          *,
-          profiles:user_id (username, full_name),
-          tournaments:tournament_id (name)
+          id,
+          payment_status,
+          tournaments:tournament_id (entry_fee)
         `)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setParticipations(data || []);
-    } catch (err) {
-      console.error("Error fetching participations:", err);
-      toast.error("Erro ao carregar participações");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const confirmPayment = async (participationId: string) => {
-    try {
-      // Generate unique token
-      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-      let randomPart = "";
-      for (let i = 0; i < 5; i++) {
-        randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      const uniqueToken = `JPG-FF-${randomPart}`;
-
-      const { error } = await supabase
-        .from("participations")
-        .update({
-          payment_status: "paid",
-          unique_token: uniqueToken,
-        })
-        .eq("id", participationId);
+        .eq("payment_status", "paid");
 
       if (error) throw error;
 
-      toast.success("Pagamento confirmado!");
-      fetchParticipations();
+      const totalRevenue = participations?.reduce((sum, p) => {
+        const entryFee = (p.tournaments as any)?.entry_fee || 0;
+        return sum + entryFee;
+      }, 0) || 0;
+
+      const prizePool = totalRevenue * 0.7;
+      const platformRevenue = totalRevenue * 0.3;
+
+      setRevenueData({
+        totalRevenue,
+        prizePool,
+        platformRevenue,
+        totalParticipations: participations?.length || 0,
+      });
     } catch (err) {
-      console.error("Error confirming payment:", err);
-      toast.error("Erro ao confirmar pagamento");
+      console.error("Error fetching revenue data:", err);
     }
   };
-
-  const rejectPayment = async (participationId: string) => {
-    try {
-      const { error } = await supabase
-        .from("participations")
-        .update({ payment_status: "failed" })
-        .eq("id", participationId);
-
-      if (error) throw error;
-
-      toast.success("Pagamento rejeitado");
-      fetchParticipations();
-    } catch (err) {
-      console.error("Error rejecting payment:", err);
-      toast.error("Erro ao rejeitar pagamento");
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    const config: Record<string, { label: string; color: string }> = {
-      pending: { label: "Pendente", color: "bg-amber-500/10 text-amber-500" },
-      paid: { label: "Pago", color: "bg-primary/10 text-primary" },
-      failed: { label: "Falhou", color: "bg-destructive/10 text-destructive" },
-      refunded: { label: "Reembolsado", color: "bg-muted text-muted-foreground" },
-    };
-    const c = config[status] || config.pending;
-    return (
-      <span className={cn("px-2 py-1 rounded-full text-xs font-medium", c.color)}>
-        {c.label}
-      </span>
-    );
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const filteredParticipations = participations.filter((p) => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      p.unique_token?.toLowerCase().includes(searchLower) ||
-      p.profiles?.username?.toLowerCase().includes(searchLower) ||
-      p.profiles?.full_name?.toLowerCase().includes(searchLower) ||
-      p.payment_status.toLowerCase().includes(searchLower)
-    );
-  });
 
   if (isAdmin === null) {
     return (
@@ -236,21 +125,28 @@ export default function AdminPage() {
 
         <div className="flex items-center gap-3 mb-2">
           <Shield className="text-primary" size={28} />
-          <h1 className="font-display text-3xl font-bold">Painel Admin</h1>
+          <h1 className="font-display text-3xl font-bold">Painel Administrativo</h1>
         </div>
         <p className="text-muted-foreground">
-          Gerencie torneios e participações
+          Gerencie torneios, usuários, ingressos e receitas
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-6">
         <Button
-          variant={activeTab === "participations" ? "default" : "outline"}
-          onClick={() => setActiveTab("participations")}
+          variant={activeTab === "dashboard" ? "default" : "outline"}
+          onClick={() => setActiveTab("dashboard")}
+        >
+          <Shield size={18} />
+          Dashboard
+        </Button>
+        <Button
+          variant={activeTab === "tickets" ? "default" : "outline"}
+          onClick={() => setActiveTab("tickets")}
         >
           <Ticket size={18} />
-          Participações
+          Ingressos
         </Button>
         <Button
           variant={activeTab === "tournaments" ? "default" : "outline"}
@@ -259,175 +155,86 @@ export default function AdminPage() {
           <Trophy size={18} />
           Torneios
         </Button>
+        <Button
+          variant={activeTab === "users" ? "default" : "outline"}
+          onClick={() => setActiveTab("users")}
+        >
+          <Users size={18} />
+          Usuários
+        </Button>
       </div>
 
       {/* Content */}
-      {activeTab === "participations" && (
-        <div className="space-y-4">
-          {/* Search */}
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1 max-w-md">
-              <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                size={18}
-              />
-              <Input
-                placeholder="Buscar por token, nome ou status..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Button variant="outline" onClick={fetchParticipations}>
-              <RefreshCw size={16} className={cn(isLoading && "animate-spin")} />
-              Atualizar
-            </Button>
-          </div>
-
-          {/* Table */}
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border bg-muted/50">
-                    <th className="text-left p-4 font-medium text-muted-foreground">
-                      Usuário
-                    </th>
-                    <th className="text-left p-4 font-medium text-muted-foreground">
-                      Torneio
-                    </th>
-                    <th className="text-left p-4 font-medium text-muted-foreground">
-                      Token
-                    </th>
-                    <th className="text-left p-4 font-medium text-muted-foreground">
-                      Status
-                    </th>
-                    <th className="text-left p-4 font-medium text-muted-foreground">
-                      Data
-                    </th>
-                    <th className="text-left p-4 font-medium text-muted-foreground">
-                      Ações
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {isLoading ? (
-                    <tr>
-                      <td colSpan={6} className="p-8 text-center">
-                        <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
-                      </td>
-                    </tr>
-                  ) : filteredParticipations.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={6}
-                        className="p-8 text-center text-muted-foreground"
-                      >
-                        Nenhuma participação encontrada
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredParticipations.map((p) => (
-                      <tr key={p.id} className="border-b border-border/50">
-                        <td className="p-4">
-                          <p className="font-medium">
-                            {p.profiles?.full_name || p.profiles?.username || "—"}
-                          </p>
-                        </td>
-                        <td className="p-4">
-                          <p>{p.tournaments?.name || "—"}</p>
-                        </td>
-                        <td className="p-4">
-                          <code className="text-xs bg-muted px-2 py-1 rounded">
-                            {p.unique_token || "—"}
-                          </code>
-                        </td>
-                        <td className="p-4">{getStatusBadge(p.payment_status)}</td>
-                        <td className="p-4 text-sm text-muted-foreground">
-                          {formatDate(p.created_at)}
-                        </td>
-                        <td className="p-4">
-                          {p.payment_status === "pending" && (
-                            <div className="flex gap-2">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-primary hover:bg-primary/10"
-                                onClick={() => confirmPayment(p.id)}
-                              >
-                                <Check size={16} />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                onClick={() => rejectPayment(p.id)}
-                              >
-                                <X size={16} />
-                              </Button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === "tournaments" && (
-        <div className="space-y-4">
-          <div className="flex justify-end">
-            <Button variant="outline" onClick={fetchTournaments}>
-              <RefreshCw size={16} className={cn(isLoading && "animate-spin")} />
-              Atualizar
-            </Button>
-          </div>
-
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-            </div>
-          ) : tournaments.length === 0 ? (
-            <div className="text-center py-12 bg-card border border-border rounded-xl">
-              <Trophy className="mx-auto text-muted-foreground mb-4" size={40} />
-              <p className="text-muted-foreground">Nenhum torneio cadastrado</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Use o SQL Editor do Supabase para adicionar torneios
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-4">
-              {tournaments.map((t) => (
-                <div
-                  key={t.id}
-                  className="bg-card border border-border rounded-xl p-6"
+      {activeTab === "dashboard" && (
+        <div>
+          <RevenueCard
+            totalRevenue={revenueData.totalRevenue}
+            prizePool={revenueData.prizePool}
+            platformRevenue={revenueData.platformRevenue}
+            totalParticipations={revenueData.totalParticipations}
+          />
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-card border border-border rounded-xl p-6">
+              <h3 className="font-display font-bold text-lg mb-4">Ações Rápidas</h3>
+              <div className="space-y-3">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => setActiveTab("tournaments")}
                 >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-display font-bold text-lg">{t.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {t.game} • {formatDate(t.start_date)}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-display text-xl font-bold text-primary">
-                        R$ {t.prize_pool}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Entrada: R$ {t.entry_fee}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                  <Trophy size={18} />
+                  Gerenciar Torneios
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => setActiveTab("tickets")}
+                >
+                  <Ticket size={18} />
+                  Validar Ingressos Pendentes
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => setActiveTab("users")}
+                >
+                  <Users size={18} />
+                  Gerenciar Usuários
+                </Button>
+              </div>
             </div>
-          )}
+
+            <div className="bg-card border border-border rounded-xl p-6">
+              <h3 className="font-display font-bold text-lg mb-4">Regras de Distribuição</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                  <div>
+                    <p className="font-medium text-primary">Pool de Premiação</p>
+                    <p className="text-sm text-muted-foreground">
+                      Destinado aos vencedores
+                    </p>
+                  </div>
+                  <p className="font-display text-2xl font-bold text-primary">70%</p>
+                </div>
+                <div className="flex items-center justify-between p-4 bg-secondary rounded-lg">
+                  <div>
+                    <p className="font-medium">Taxa da Plataforma</p>
+                    <p className="text-sm text-muted-foreground">
+                      Custos operacionais
+                    </p>
+                  </div>
+                  <p className="font-display text-2xl font-bold">30%</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
+
+      {activeTab === "tickets" && <TicketsTab />}
+      {activeTab === "tournaments" && <TournamentsTab />}
+      {activeTab === "users" && <UsersTab />}
     </div>
   );
 }
