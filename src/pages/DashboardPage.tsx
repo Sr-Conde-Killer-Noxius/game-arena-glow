@@ -50,7 +50,7 @@ interface GameData {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const [games, setGames] = useState<GameData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -131,7 +131,7 @@ export default function DashboardPage() {
     navigate("/");
   };
 
-  const displayName = user?.user_metadata?.username || user?.email?.split("@")[0] || "Jogador";
+  const displayName = profile?.username || profile?.full_name || user?.user_metadata?.username || user?.email?.split("@")[0] || "Jogador";
   const activeGamesCount = games.filter((g) => g.isActive).length;
 
   return (
