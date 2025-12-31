@@ -511,7 +511,7 @@ export function TicketPurchaseModal({
 
                 <FileUpload
                   label="Seguindo JPG no Instagram"
-                  description="Print provando que você segue @jpgesports no Instagram"
+                  description="Print provando que você segue @jogapraganhar no Instagram"
                   required
                   value={formData.instagramProof}
                   onChange={(file) =>

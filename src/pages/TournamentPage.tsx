@@ -74,7 +74,7 @@ const defaultRules = [
 
 const defaultRequirements = [
   "Seguir @jpgesports no Instagram",
-  "Entrar no canal do WhatsApp da JPG",
+  "Entrar no canal e no grupo do WhatsApp da JPG",
   "Ter conta verificada no jogo",
   "Aceitar os termos e regras do torneio",
 ];
