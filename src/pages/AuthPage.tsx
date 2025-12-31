@@ -1,17 +1,26 @@
-import { useState } from "react";
-import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, Eye, EyeOff, Gamepad2 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { z } from "zod";
+
+const emailSchema = z.string().email("E-mail inválido");
+const passwordSchema = z.string().min(6, "Senha deve ter no mínimo 6 caracteres");
 
 export default function AuthPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user, signIn, signUp, isLoading: authLoading } = useAuth();
+  
   const [isLogin, setIsLogin] = useState(searchParams.get("mode") !== "signup");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [formData, setFormData] = useState({
     email: "",
@@ -20,23 +29,100 @@ export default function AuthPage() {
     confirmPassword: "",
   });
 
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user && !authLoading) {
+      const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/dashboard";
+      navigate(from, { replace: true });
+    }
+  }, [user, authLoading, navigate, location]);
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    try {
+      emailSchema.parse(formData.email);
+    } catch {
+      newErrors.email = "E-mail inválido";
+    }
+
+    try {
+      passwordSchema.parse(formData.password);
+    } catch {
+      newErrors.password = "Senha deve ter no mínimo 6 caracteres";
+    }
+
+    if (!isLogin) {
+      if (!formData.username.trim()) {
+        newErrors.username = "Nome de usuário é obrigatório";
+      }
+      if (formData.password !== formData.confirmPassword) {
+        newErrors.confirmPassword = "As senhas não coincidem";
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
-    // Simulate auth process
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    if (!isLogin && formData.password !== formData.confirmPassword) {
-      toast.error("As senhas não coincidem!");
-      setIsLoading(false);
+    
+    if (!validateForm()) {
       return;
     }
 
-    toast.success(isLogin ? "Login realizado com sucesso!" : "Conta criada com sucesso!");
-    setIsLoading(false);
-    navigate("/dashboard");
+    setIsLoading(true);
+    setErrors({});
+
+    try {
+      if (isLogin) {
+        const { error } = await signIn(formData.email, formData.password);
+        
+        if (error) {
+          if (error.message.includes("Invalid login credentials")) {
+            toast.error("E-mail ou senha incorretos");
+          } else if (error.message.includes("Email not confirmed")) {
+            toast.error("Confirme seu e-mail antes de fazer login");
+          } else {
+            toast.error(error.message);
+          }
+          setIsLoading(false);
+          return;
+        }
+
+        toast.success("Login realizado com sucesso!");
+      } else {
+        const { error } = await signUp(formData.email, formData.password, formData.username);
+        
+        if (error) {
+          if (error.message.includes("User already registered")) {
+            toast.error("Este e-mail já está cadastrado");
+          } else {
+            toast.error(error.message);
+          }
+          setIsLoading(false);
+          return;
+        }
+
+        toast.success("Conta criada! Verifique seu e-mail para confirmar.", {
+          duration: 5000,
+        });
+      }
+    } catch (err) {
+      toast.error("Erro inesperado. Tente novamente.");
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -89,8 +175,11 @@ export default function AuthPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, username: e.target.value })
                   }
-                  required
+                  className={errors.username ? "border-destructive" : ""}
                 />
+                {errors.username && (
+                  <p className="text-xs text-destructive">{errors.username}</p>
+                )}
               </div>
             )}
 
@@ -104,8 +193,11 @@ export default function AuthPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
                 }
-                required
+                className={errors.email ? "border-destructive" : ""}
               />
+              {errors.email && (
+                <p className="text-xs text-destructive">{errors.email}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -119,7 +211,7 @@ export default function AuthPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, password: e.target.value })
                   }
-                  required
+                  className={errors.password ? "border-destructive" : ""}
                 />
                 <button
                   type="button"
@@ -129,6 +221,9 @@ export default function AuthPage() {
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
+              {errors.password && (
+                <p className="text-xs text-destructive">{errors.password}</p>
+              )}
             </div>
 
             {!isLogin && (
@@ -146,9 +241,12 @@ export default function AuthPage() {
                         confirmPassword: e.target.value,
                       })
                     }
-                    required
+                    className={errors.confirmPassword ? "border-destructive" : ""}
                   />
                 </div>
+                {errors.confirmPassword && (
+                  <p className="text-xs text-destructive">{errors.confirmPassword}</p>
+                )}
               </div>
             )}
 
@@ -189,7 +287,10 @@ export default function AuthPage() {
               {isLogin ? "Não tem uma conta?" : "Já tem uma conta?"}{" "}
               <button
                 type="button"
-                onClick={() => setIsLogin(!isLogin)}
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  setErrors({});
+                }}
                 className="text-primary font-semibold hover:underline"
               >
                 {isLogin ? "Cadastre-se" : "Entre aqui"}
