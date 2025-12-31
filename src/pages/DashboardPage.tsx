@@ -1,10 +1,13 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { GameCard } from "@/components/GameCard";
 import { Bell, Search, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import type { Database } from "@/integrations/supabase/types";
 
 // Import game images
 import freefireImg from "@/assets/games/freefire.jpg";
@@ -14,22 +17,111 @@ import codmobileImg from "@/assets/games/codmobile.jpg";
 import cs2Img from "@/assets/games/cs2.jpg";
 import pubgImg from "@/assets/games/pubg.jpg";
 
-const games = [
-  { id: "freefire", name: "Free Fire", image: freefireImg, isActive: true },
-  { id: "wildrift", name: "LoL: Wild Rift", image: wildriftImg, isActive: false },
-  { id: "valorant", name: "Valorant", image: valorantImg, isActive: false },
-  { id: "codmobile", name: "CoD Mobile", image: codmobileImg, isActive: false },
-  { id: "cs2", name: "CS2", image: cs2Img, isActive: false },
-  { id: "pubg", name: "PUBG Mobile", image: pubgImg, isActive: false },
-];
+type GameType = Database["public"]["Enums"]["game_type"];
+
+// Base game data with images
+const gameImages: Record<GameType, string> = {
+  freefire: freefireImg,
+  wildrift: wildriftImg,
+  valorant: valorantImg,
+  codmobile: codmobileImg,
+  cs2: cs2Img,
+  pubg: pubgImg,
+};
+
+const gameNames: Record<GameType, string> = {
+  freefire: "Free Fire",
+  wildrift: "LoL: Wild Rift",
+  valorant: "Valorant",
+  codmobile: "CoD Mobile",
+  cs2: "CS2",
+  pubg: "PUBG Mobile",
+};
+
+const allGameTypes: GameType[] = ["freefire", "wildrift", "valorant", "codmobile", "cs2", "pubg"];
+
+interface GameData {
+  id: GameType;
+  name: string;
+  image: string;
+  isActive: boolean;
+  tournamentCount: number;
+}
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const [games, setGames] = useState<GameData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchGamesWithTournaments();
+  }, []);
+
+  const fetchGamesWithTournaments = async () => {
+    try {
+      // Fetch tournaments that are open or in_progress
+      const { data: tournaments, error } = await supabase
+        .from("tournaments")
+        .select("game, status")
+        .in("status", ["open", "in_progress", "upcoming"]);
+
+      if (error) throw error;
+
+      // Count active tournaments per game
+      const tournamentCounts: Record<GameType, number> = {
+        freefire: 0,
+        wildrift: 0,
+        valorant: 0,
+        codmobile: 0,
+        cs2: 0,
+        pubg: 0,
+      };
+
+      tournaments?.forEach((t) => {
+        if (t.game && tournamentCounts[t.game as GameType] !== undefined) {
+          tournamentCounts[t.game as GameType]++;
+        }
+      });
+
+      // Build games array - games with tournaments are active
+      const gamesData: GameData[] = allGameTypes.map((gameType) => ({
+        id: gameType,
+        name: gameNames[gameType],
+        image: gameImages[gameType],
+        isActive: tournamentCounts[gameType] > 0,
+        tournamentCount: tournamentCounts[gameType],
+      }));
+
+      // Sort: active games first
+      gamesData.sort((a, b) => {
+        if (a.isActive && !b.isActive) return -1;
+        if (!a.isActive && b.isActive) return 1;
+        return b.tournamentCount - a.tournamentCount;
+      });
+
+      setGames(gamesData);
+    } catch (err) {
+      console.error("Error fetching games:", err);
+      // Fallback to static data
+      setGames(
+        allGameTypes.map((gameType) => ({
+          id: gameType,
+          name: gameNames[gameType],
+          image: gameImages[gameType],
+          isActive: false,
+          tournamentCount: 0,
+        }))
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleGameClick = (gameId: string) => {
-    if (gameId === "freefire") {
-      navigate("/tournament/freefire");
+    const game = games.find((g) => g.id === gameId);
+    if (game?.isActive) {
+      navigate(`/tournament/${gameId}`);
     }
   };
 
@@ -40,6 +132,7 @@ export default function DashboardPage() {
   };
 
   const displayName = user?.user_metadata?.username || user?.email?.split("@")[0] || "Jogador";
+  const activeGamesCount = games.filter((g) => g.isActive).length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -98,21 +191,27 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-display text-xl font-bold">Jogos Disponíveis</h3>
             <span className="text-sm text-muted-foreground">
-              1 de {games.length} ativos
+              {isLoading ? "Carregando..." : `${activeGamesCount} de ${games.length} ativos`}
             </span>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 lg:gap-6">
-            {games.map((game) => (
-              <GameCard
-                key={game.id}
-                name={game.name}
-                image={game.image}
-                isActive={game.isActive}
-                onClick={() => handleGameClick(game.id)}
-              />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 lg:gap-6">
+              {games.map((game) => (
+                <GameCard
+                  key={game.id}
+                  name={game.name}
+                  image={game.image}
+                  isActive={game.isActive}
+                  onClick={() => handleGameClick(game.id)}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Quick Stats */}

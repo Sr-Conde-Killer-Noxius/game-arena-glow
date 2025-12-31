@@ -1,17 +1,31 @@
 import { useState, useEffect } from "react";
-import { Save, Eye, EyeOff, RefreshCw, CreditCard } from "lucide-react";
+import { Save, Eye, EyeOff, RefreshCw, CreditCard, Zap, Copy, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
 interface MercadoPagoConfig {
   public_key: string;
   access_token: string;
   client_id: string;
   client_secret: string;
+}
+
+interface TestPaymentResult {
+  success: boolean;
+  paymentId?: string;
+  pixCopyPaste?: string;
+  pixQrCodeBase64?: string;
+  error?: string;
 }
 
 export function IntegrationsTab() {
@@ -27,6 +41,18 @@ export function IntegrationsTab() {
     access_token: false,
     client_secret: false,
   });
+
+  // Test payment state
+  const [showTestModal, setShowTestModal] = useState(false);
+  const [testForm, setTestForm] = useState({
+    amount: "1.00",
+    email: "",
+    name: "",
+    cpf: "",
+  });
+  const [isTestingPayment, setIsTestingPayment] = useState(false);
+  const [testResult, setTestResult] = useState<TestPaymentResult | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetchSettings();
@@ -102,6 +128,58 @@ export function IntegrationsTab() {
 
   const toggleSecret = (field: "access_token" | "client_secret") => {
     setShowSecrets((prev) => ({ ...prev, [field]: !prev[field] }));
+  };
+
+  const openTestModal = () => {
+    setTestResult(null);
+    setShowTestModal(true);
+  };
+
+  const testPayment = async () => {
+    if (!testForm.email || !testForm.cpf) {
+      toast.error("Preencha email e CPF");
+      return;
+    }
+
+    setIsTestingPayment(true);
+    setTestResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("test-pix-payment", {
+        body: {
+          amount: parseFloat(testForm.amount) || 1.00,
+          description: "Teste de Integração JPG",
+          payerEmail: testForm.email,
+          payerName: testForm.name || "Teste",
+          payerCpf: testForm.cpf,
+        },
+      });
+
+      if (error) throw error;
+
+      setTestResult(data);
+      if (data.success) {
+        toast.success("QR Code gerado com sucesso!");
+      } else {
+        toast.error(data.error || "Erro ao gerar QR Code");
+      }
+    } catch (err) {
+      console.error("Error testing payment:", err);
+      const errorMessage = err instanceof Error ? err.message : "Erro ao testar integração";
+      setTestResult({ success: false, error: errorMessage });
+      toast.error(errorMessage);
+    } finally {
+      setIsTestingPayment(false);
+    }
+  };
+
+  const copyPixCode = () => {
+    if (testResult?.pixCopyPaste) {
+      navigator.clipboard.writeText(testResult.pixCopyPaste);
+      setCopied(true);
+      toast.success("Código PIX copiado!");
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   if (isLoading) {
@@ -208,7 +286,7 @@ export function IntegrationsTab() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 mt-6 pt-6 border-t border-border">
+        <div className="flex flex-wrap items-center gap-3 mt-6 pt-6 border-t border-border">
           <Button onClick={saveSettings} disabled={isSaving}>
             {isSaving ? (
               <RefreshCw size={16} className="animate-spin mr-2" />
@@ -220,6 +298,10 @@ export function IntegrationsTab() {
           <Button variant="outline" onClick={fetchSettings}>
             <RefreshCw size={16} className="mr-2" />
             Atualizar
+          </Button>
+          <Button variant="secondary" onClick={openTestModal}>
+            <Zap size={16} className="mr-2" />
+            Testar Integração
           </Button>
         </div>
       </div>
@@ -243,6 +325,128 @@ export function IntegrationsTab() {
           </p>
         </div>
       </div>
+
+      {/* Test Payment Modal */}
+      <Dialog open={showTestModal} onOpenChange={setShowTestModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Testar Integração PIX</DialogTitle>
+          </DialogHeader>
+
+          {!testResult?.success ? (
+            <div className="space-y-4 py-4">
+              <p className="text-sm text-muted-foreground">
+                Preencha os dados abaixo para gerar um QR Code de teste.
+              </p>
+
+              <div className="space-y-2">
+                <Label htmlFor="test_amount">Valor (R$) *</Label>
+                <Input
+                  id="test_amount"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={testForm.amount}
+                  onChange={(e) => setTestForm((prev) => ({ ...prev, amount: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="test_email">Email do Pagador *</Label>
+                <Input
+                  id="test_email"
+                  type="email"
+                  placeholder="email@exemplo.com"
+                  value={testForm.email}
+                  onChange={(e) => setTestForm((prev) => ({ ...prev, email: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="test_name">Nome (opcional)</Label>
+                <Input
+                  id="test_name"
+                  placeholder="Nome do Pagador"
+                  value={testForm.name}
+                  onChange={(e) => setTestForm((prev) => ({ ...prev, name: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="test_cpf">CPF *</Label>
+                <Input
+                  id="test_cpf"
+                  placeholder="000.000.000-00"
+                  value={testForm.cpf}
+                  onChange={(e) => setTestForm((prev) => ({ ...prev, cpf: e.target.value }))}
+                />
+              </div>
+
+              {testResult?.error && (
+                <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <p className="text-sm text-destructive">{testResult.error}</p>
+                </div>
+              )}
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowTestModal(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={testPayment} disabled={isTestingPayment}>
+                  {isTestingPayment ? (
+                    <RefreshCw size={16} className="animate-spin mr-2" />
+                  ) : (
+                    <Zap size={16} className="mr-2" />
+                  )}
+                  Gerar QR Code
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-4 py-4">
+              <div className="text-center">
+                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Check className="text-primary" size={24} />
+                </div>
+                <p className="font-medium text-lg">QR Code Gerado!</p>
+                <p className="text-sm text-muted-foreground">
+                  ID do Pagamento: {testResult.paymentId}
+                </p>
+              </div>
+
+              {testResult.pixQrCodeBase64 && (
+                <div className="flex justify-center p-4 bg-white rounded-lg">
+                  <img
+                    src={`data:image/png;base64,${testResult.pixQrCodeBase64}`}
+                    alt="QR Code PIX"
+                    className="w-48 h-48"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground uppercase">PIX Copia e Cola</Label>
+                <div className="flex gap-2">
+                  <Input
+                    readOnly
+                    value={testResult.pixCopyPaste || ""}
+                    className="font-mono text-xs"
+                  />
+                  <Button variant="outline" size="icon" onClick={copyPixCode}>
+                    {copied ? <Check size={16} /> : <Copy size={16} />}
+                  </Button>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button onClick={() => { setTestResult(null); setShowTestModal(false); }}>
+                  Fechar
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
