@@ -131,7 +131,13 @@ export default function DashboardPage() {
     navigate("/");
   };
 
-  const displayName = profile?.username || profile?.full_name || user?.user_metadata?.username || user?.email?.split("@")[0] || "Jogador";
+  const displayName =
+    profile?.full_name ||
+    profile?.username ||
+    (user?.user_metadata as { full_name?: string; username?: string } | null)?.full_name ||
+    (user?.user_metadata as { full_name?: string; username?: string } | null)?.username ||
+    user?.email?.split("@")[0] ||
+    "Jogador";
   const activeGamesCount = games.filter((g) => g.isActive).length;
 
   return (
