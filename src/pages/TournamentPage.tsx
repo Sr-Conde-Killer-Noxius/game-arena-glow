@@ -132,6 +132,49 @@ export default function TournamentPage() {
     fetchTournaments();
   }, [gameId]);
 
+  // Realtime subscription for participant counts
+  useEffect(() => {
+    if (tournaments.length === 0) return;
+
+    const tournamentIds = tournaments.map(t => t.id);
+
+    const channel = supabase
+      .channel('participations-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'participations',
+        },
+        async (payload) => {
+          const newRecord = payload.new as { tournament_id?: string; payment_status?: string };
+          const oldRecord = payload.old as { tournament_id?: string; payment_status?: string };
+          
+          const affectedTournamentId = newRecord?.tournament_id || oldRecord?.tournament_id;
+          
+          if (affectedTournamentId && tournamentIds.includes(affectedTournamentId)) {
+            // Refetch count for this specific tournament
+            const { count } = await supabase
+              .from("participations")
+              .select("*", { count: "exact", head: true })
+              .eq("tournament_id", affectedTournamentId)
+              .eq("payment_status", "paid");
+            
+            setParticipantCounts(prev => ({
+              ...prev,
+              [affectedTournamentId]: count || 0
+            }));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [tournaments]);
+
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString("pt-BR", {
