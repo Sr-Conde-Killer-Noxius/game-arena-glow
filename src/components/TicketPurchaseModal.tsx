@@ -61,10 +61,39 @@ export function TicketPurchaseModal({
   const prizeShare = (price * 0.7).toFixed(2);
   const organizationShare = (price * 0.3).toFixed(2);
 
-  // Poll for payment status when on PIX step
+  // Listen for payment status updates via Supabase Realtime
   useEffect(() => {
     if (step !== "pix" || !participationId) return;
 
+    console.log("Setting up realtime subscription for participation:", participationId);
+
+    // Subscribe to realtime changes on the participation
+    const channel = supabase
+      .channel(`participation-${participationId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "participations",
+          filter: `id=eq.${participationId}`,
+        },
+        (payload) => {
+          console.log("Realtime update received:", payload);
+          const newData = payload.new as { payment_status: string; unique_token: string };
+          
+          if (newData.payment_status === "paid") {
+            setUniqueToken(newData.unique_token);
+            setStep("success");
+            toast.success("Pagamento confirmado!");
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log("Realtime subscription status:", status);
+      });
+
+    // Also poll as fallback every 10 seconds (in case realtime fails)
     const interval = setInterval(async () => {
       try {
         const { data, error } = await supabase.functions.invoke("check-payment-status", {
@@ -84,9 +113,13 @@ export function TicketPurchaseModal({
       } catch (err) {
         console.error("Error polling status:", err);
       }
-    }, 5000);
+    }, 10000);
 
-    return () => clearInterval(interval);
+    return () => {
+      console.log("Cleaning up realtime subscription");
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
   }, [step, participationId]);
 
   const formatCPF = (value: string) => {

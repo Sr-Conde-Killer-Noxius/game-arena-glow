@@ -257,15 +257,30 @@ serve(async (req) => {
       transaction_amount: payment.transaction_amount,
     }));
 
-    const participationId = payment.external_reference;
+    let participationId = payment.external_reference;
+    
+    // If no external_reference, try to find by mercado_pago_payment_id
     if (!participationId) {
-      console.log("No external_reference in payment");
-      await logWebhook("mercadopago", req.method, reqHeaders, body, 200, { 
-        warning: "no_external_reference", 
-        payment_id: paymentId,
-        mp_status: payment.status 
-      });
-      return successResponse();
+      console.log("No external_reference, searching by mercado_pago_payment_id...");
+      
+      const { data: foundParticipation, error: findError } = await supabaseClient
+        .from("participations")
+        .select("id")
+        .eq("mercado_pago_payment_id", paymentId.toString())
+        .single();
+
+      if (findError || !foundParticipation) {
+        console.log("Participation not found by payment_id either");
+        await logWebhook("mercadopago", req.method, reqHeaders, body, 200, { 
+          warning: "participation_not_found", 
+          payment_id: paymentId,
+          mp_status: payment.status 
+        });
+        return successResponse();
+      }
+
+      participationId = foundParticipation.id;
+      console.log("Found participation by payment_id:", participationId);
     }
 
     // Map Mercado Pago status to our status
