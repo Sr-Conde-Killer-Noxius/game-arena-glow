@@ -22,8 +22,9 @@ serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
+      supabaseUrl,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
@@ -38,6 +39,10 @@ serve(async (req) => {
 
     // Generate unique idempotency key
     const idempotencyKey = crypto.randomUUID();
+
+    // Build notification URL for webhook
+    const notificationUrl = `${supabaseUrl}/functions/v1/mercadopago-webhook`;
+    console.log("Webhook notification URL:", notificationUrl);
 
     // Create PIX payment via Mercado Pago API
     const paymentData = {
@@ -54,9 +59,10 @@ serve(async (req) => {
         },
       },
       external_reference: body.participationId,
+      notification_url: notificationUrl,
     };
 
-    console.log("Sending request to Mercado Pago...");
+    console.log("Sending request to Mercado Pago with payload:", JSON.stringify(paymentData, null, 2));
 
     const mpResponse = await fetch("https://api.mercadopago.com/v1/payments", {
       method: "POST",
@@ -70,6 +76,7 @@ serve(async (req) => {
 
     const mpResult = await mpResponse.json();
     console.log("Mercado Pago response status:", mpResponse.status);
+    console.log("Mercado Pago response:", JSON.stringify(mpResult, null, 2));
 
     if (!mpResponse.ok) {
       console.error("Mercado Pago error:", mpResult);
@@ -84,17 +91,21 @@ serve(async (req) => {
       throw new Error("Failed to generate PIX code");
     }
 
-    // Update participation with payment ID
+    // Update participation with payment ID and status
     const { error: updateError } = await supabaseClient
       .from("participations")
       .update({
         payment_status: "pending",
+        mercado_pago_payment_id: mpResult.id.toString(),
+        payment_created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq("id", body.participationId);
 
     if (updateError) {
       console.error("Error updating participation:", updateError);
+    } else {
+      console.log("Participation updated with payment_id:", mpResult.id);
     }
 
     console.log("PIX payment created successfully, payment ID:", mpResult.id);

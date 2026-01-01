@@ -21,9 +21,10 @@ serve(async (req) => {
     const { participationId } = await req.json();
     console.log("Checking payment status for participation:", participationId);
 
-    const { data, error } = await supabaseClient
+    // Fetch participation from database
+    const { data: participation, error } = await supabaseClient
       .from("participations")
-      .select("payment_status, unique_token")
+      .select("payment_status, unique_token, mercado_pago_payment_id")
       .eq("id", participationId)
       .single();
 
@@ -32,13 +33,101 @@ serve(async (req) => {
       throw new Error("Participation not found");
     }
 
-    console.log("Payment status:", data.payment_status);
+    console.log("Current payment status:", participation.payment_status);
 
+    // If already paid, return immediately
+    if (participation.payment_status === "paid") {
+      return new Response(
+        JSON.stringify({
+          status: participation.payment_status,
+          token: participation.unique_token,
+          isPaid: true,
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    }
+
+    // If pending and has payment_id, check Mercado Pago API directly
+    if (participation.payment_status === "pending" && participation.mercado_pago_payment_id) {
+      const accessToken = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN");
+      
+      if (accessToken) {
+        console.log("Checking Mercado Pago API for payment:", participation.mercado_pago_payment_id);
+        
+        try {
+          const mpResponse = await fetch(
+            `https://api.mercadopago.com/v1/payments/${participation.mercado_pago_payment_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+            }
+          );
+
+          if (mpResponse.ok) {
+            const mpPayment = await mpResponse.json();
+            console.log("Mercado Pago payment status:", mpPayment.status);
+
+            // If approved in MP but not in our DB, update it
+            if (mpPayment.status === "approved") {
+              console.log("Payment approved in MP! Updating database...");
+              
+              const { data: updatedParticipation, error: updateError } = await supabaseClient
+                .from("participations")
+                .update({
+                  payment_status: "paid",
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", participationId)
+                .select("unique_token")
+                .single();
+
+              if (updateError) {
+                console.error("Error updating participation:", updateError);
+              } else {
+                console.log("Participation updated to paid, token:", updatedParticipation.unique_token);
+                
+                return new Response(
+                  JSON.stringify({
+                    status: "paid",
+                    token: updatedParticipation.unique_token,
+                    isPaid: true,
+                  }),
+                  {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" },
+                    status: 200,
+                  }
+                );
+              }
+            } else if (mpPayment.status === "rejected" || mpPayment.status === "cancelled") {
+              console.log("Payment rejected/cancelled in MP, updating database...");
+              
+              await supabaseClient
+                .from("participations")
+                .update({
+                  payment_status: "failed",
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", participationId);
+            }
+          } else {
+            console.log("Failed to fetch from MP API:", mpResponse.status);
+          }
+        } catch (mpError) {
+          console.error("Error checking Mercado Pago API:", mpError);
+        }
+      }
+    }
+
+    // Return current status from database
     return new Response(
       JSON.stringify({
-        status: data.payment_status,
-        token: data.unique_token,
-        isPaid: data.payment_status === "paid",
+        status: participation.payment_status,
+        token: participation.unique_token,
+        isPaid: participation.payment_status === "paid",
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
