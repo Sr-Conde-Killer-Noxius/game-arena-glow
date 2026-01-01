@@ -7,6 +7,7 @@ import {
   Trophy,
   Ticket,
   Settings,
+  Webhook,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,8 +18,9 @@ import { TournamentsTab } from "@/components/admin/TournamentsTab";
 import { UsersTab } from "@/components/admin/UsersTab";
 import { TicketsTab } from "@/components/admin/TicketsTab";
 import { IntegrationsTab } from "@/components/admin/IntegrationsTab";
+import { WebhooksTab } from "@/components/admin/WebhooksTab";
 
-type Tab = "dashboard" | "tournaments" | "users" | "tickets" | "integrations";
+type Tab = "dashboard" | "tournaments" | "users" | "tickets" | "integrations" | "webhooks";
 
 interface RevenueData {
   totalRevenue: number;
@@ -171,6 +173,13 @@ export default function AdminPage() {
           <Settings size={18} />
           Integrações
         </Button>
+        <Button
+          variant={activeTab === "webhooks" ? "default" : "outline"}
+          onClick={() => setActiveTab("webhooks")}
+        >
+          <Webhook size={18} />
+          Webhooks
+        </Button>
       </div>
 
       {/* Content */}
@@ -245,6 +254,7 @@ export default function AdminPage() {
       {activeTab === "tournaments" && <TournamentsTab />}
       {activeTab === "users" && <UsersTab />}
       {activeTab === "integrations" && <IntegrationsTab />}
+      {activeTab === "webhooks" && <WebhooksTab />}
     </div>
   );
 }
