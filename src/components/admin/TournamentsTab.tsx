@@ -202,6 +202,7 @@ export function TournamentsTab() {
             id: editingTournament.id,
             name: editingTournament.name,
             game: editingTournament.game,
+            game_mode: ((editingTournament as { game_mode?: string }).game_mode || "solo") as "solo" | "dupla" | "trio" | "squad",
             description: editingTournament.description || "",
             rules: editingTournament.rules || "",
             start_date: editingTournament.start_date,
