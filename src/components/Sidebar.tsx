@@ -24,7 +24,7 @@ const menuItems = [
   { icon: Ticket, label: "Meus Ingressos", path: "/my-tickets", active: true },
   { icon: User, label: "Perfil", path: "/profile", active: true },
   { icon: Shield, label: "Admin", path: "/admin", active: true, adminOnly: true },
-  { icon: Trophy, label: "Torneios", path: "/tournaments", active: false },
+  { icon: Trophy, label: "Torneios - Ranked", path: "/tournaments", active: false },
   { icon: BarChart3, label: "Ranking", path: "/ranking", active: false },
   { icon: Users, label: "JPG Social", path: "/social", active: false },
 ];
