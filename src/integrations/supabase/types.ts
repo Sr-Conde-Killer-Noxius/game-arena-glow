@@ -18,6 +18,8 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          mercado_pago_payment_id: string | null
+          payment_created_at: string | null
           payment_status: Database["public"]["Enums"]["payment_status"]
           screenshot_1_url: string | null
           screenshot_2_url: string | null
@@ -31,6 +33,8 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          mercado_pago_payment_id?: string | null
+          payment_created_at?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
           screenshot_1_url?: string | null
           screenshot_2_url?: string | null
@@ -44,6 +48,8 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          mercado_pago_payment_id?: string | null
+          payment_created_at?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
           screenshot_1_url?: string | null
           screenshot_2_url?: string | null
