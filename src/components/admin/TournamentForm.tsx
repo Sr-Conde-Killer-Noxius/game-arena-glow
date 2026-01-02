@@ -17,11 +17,13 @@ import type { Database } from "@/integrations/supabase/types";
 
 type GameType = Database["public"]["Enums"]["game_type"];
 type TournamentStatus = Database["public"]["Enums"]["tournament_status"];
+type GameMode = "solo" | "dupla" | "trio" | "squad";
 
 interface Tournament {
   id?: string;
   name: string;
   game: GameType;
+  game_mode: GameMode;
   description: string;
   rules: string;
   start_date: string;
@@ -56,12 +58,20 @@ const STATUSES: { value: TournamentStatus; label: string }[] = [
   { value: "cancelled", label: "Cancelado" },
 ];
 
+const GAME_MODES: { value: GameMode; label: string; players: number }[] = [
+  { value: "solo", label: "Solo", players: 1 },
+  { value: "dupla", label: "Dupla", players: 2 },
+  { value: "trio", label: "Trio", players: 3 },
+  { value: "squad", label: "Squad", players: 4 },
+];
+
 export function TournamentForm({ tournament, onClose, onSuccess }: TournamentFormProps) {
   const isEditing = !!tournament?.id;
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<Tournament>({
     name: tournament?.name || "",
     game: tournament?.game || "freefire",
+    game_mode: tournament?.game_mode || "solo",
     description: tournament?.description || "",
     rules: tournament?.rules || "",
     start_date: tournament?.start_date
@@ -76,6 +86,12 @@ export function TournamentForm({ tournament, onClose, onSuccess }: TournamentFor
     status: tournament?.status || "upcoming",
     banner_url: tournament?.banner_url || "",
   });
+
+  // Calculate total slots based on game_mode
+  const getPlayersPerSlot = () => {
+    return GAME_MODES.find(m => m.value === formData.game_mode)?.players || 1;
+  };
+  const totalSlots = Math.floor(formData.max_participants / getPlayersPerSlot());
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -95,6 +111,7 @@ export function TournamentForm({ tournament, onClose, onSuccess }: TournamentFor
       const payload = {
         name: formData.name,
         game: formData.game,
+        game_mode: formData.game_mode,
         description: formData.description || null,
         rules: formData.rules || null,
         start_date: new Date(formData.start_date).toISOString(),
@@ -176,6 +193,30 @@ export function TournamentForm({ tournament, onClose, onSuccess }: TournamentFor
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="game_mode">Modo de Jogo *</Label>
+              <Select
+                value={formData.game_mode}
+                onValueChange={(value: GameMode) =>
+                  setFormData((prev) => ({ ...prev, game_mode: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o modo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {GAME_MODES.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label} ({m.players} jogador{m.players > 1 ? "es" : ""})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {formData.max_participants} vagas = {totalSlots} slots
+              </p>
             </div>
 
             <div className="space-y-2">

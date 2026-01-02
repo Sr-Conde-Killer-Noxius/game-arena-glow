@@ -19,12 +19,16 @@ export type Database = {
           created_at: string
           id: string
           mercado_pago_payment_id: string | null
+          partner_2_nick: string | null
+          partner_3_nick: string | null
+          partner_nick: string | null
           payment_created_at: string | null
           payment_status: Database["public"]["Enums"]["payment_status"]
           screenshot_1_url: string | null
           screenshot_2_url: string | null
           screenshot_3_url: string | null
           screenshot_4_url: string | null
+          slot_number: number | null
           tournament_id: string
           unique_token: string
           updated_at: string
@@ -34,12 +38,16 @@ export type Database = {
           created_at?: string
           id?: string
           mercado_pago_payment_id?: string | null
+          partner_2_nick?: string | null
+          partner_3_nick?: string | null
+          partner_nick?: string | null
           payment_created_at?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
           screenshot_1_url?: string | null
           screenshot_2_url?: string | null
           screenshot_3_url?: string | null
           screenshot_4_url?: string | null
+          slot_number?: number | null
           tournament_id: string
           unique_token?: string
           updated_at?: string
@@ -49,12 +57,16 @@ export type Database = {
           created_at?: string
           id?: string
           mercado_pago_payment_id?: string | null
+          partner_2_nick?: string | null
+          partner_3_nick?: string | null
+          partner_nick?: string | null
           payment_created_at?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
           screenshot_1_url?: string | null
           screenshot_2_url?: string | null
           screenshot_3_url?: string | null
           screenshot_4_url?: string | null
+          slot_number?: number | null
           tournament_id?: string
           unique_token?: string
           updated_at?: string
@@ -222,6 +234,7 @@ export type Database = {
           end_date: string | null
           entry_fee: number
           game: Database["public"]["Enums"]["game_type"]
+          game_mode: Database["public"]["Enums"]["game_mode"]
           id: string
           max_participants: number | null
           name: string
@@ -238,6 +251,7 @@ export type Database = {
           end_date?: string | null
           entry_fee?: number
           game: Database["public"]["Enums"]["game_type"]
+          game_mode?: Database["public"]["Enums"]["game_mode"]
           id?: string
           max_participants?: number | null
           name: string
@@ -254,6 +268,7 @@ export type Database = {
           end_date?: string | null
           entry_fee?: number
           game?: Database["public"]["Enums"]["game_type"]
+          game_mode?: Database["public"]["Enums"]["game_mode"]
           id?: string
           max_participants?: number | null
           name?: string
@@ -344,6 +359,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      game_mode: "solo" | "dupla" | "trio" | "squad"
       game_type:
         | "freefire"
         | "wildrift"
@@ -487,6 +503,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      game_mode: ["solo", "dupla", "trio", "squad"],
       game_type: [
         "freefire",
         "wildrift",
