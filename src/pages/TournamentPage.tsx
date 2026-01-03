@@ -54,6 +54,7 @@ interface Tournament {
   description: string | null;
   rules: string | null;
   game: string;
+  game_mode: string;
   start_date: string;
   end_date: string | null;
   entry_fee: number;
@@ -623,6 +624,9 @@ export default function TournamentPage() {
         onClose={() => setIsModalOpen(false)}
         tournamentName={selectedTournament?.name || ""}
         tournamentId={selectedTournament?.id}
+        tournamentGame={selectedTournament?.game}
+        tournamentGameMode={selectedTournament?.game_mode}
+        tournamentDate={selectedTournament?.start_date}
       />
     </div>
   );
