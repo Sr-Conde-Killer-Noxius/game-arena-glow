@@ -747,7 +747,7 @@ export function TicketPurchaseModal({
                   #{slotNumber}
                 </p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Use este número para entrar na sala do jogo
+                  Use este número quando entrar na sala do jogo
                 </p>
               </div>
             )}

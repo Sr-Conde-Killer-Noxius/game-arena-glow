@@ -150,7 +150,7 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
                 <div class="slot-box">
                   <div class="section-title">Seu Slot</div>
                   <div class="slot">#${ticket.slotNumber}</div>
-                  <div class="slot-label">Use este número para entrar na sala do jogo</div>
+                  <div class="slot-label">Use este número quando entrar na sala do jogo</div>
                 </div>
               </div>
               ` : ''}
@@ -203,7 +203,7 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
               <strong>Instruções:</strong><br/>
               1. Use o <strong>Token</strong> para validar sua participação<br/>
               ${ticket.slotNumber ? `2. Entre na sala do jogo e aguarde no <strong>Slot #${ticket.slotNumber}</strong><br/>
-              3. Use o mesmo número no Discord para call (opcional)` : ''}
+              3. Use o mesmo número de Slot no Discord para call (opcional)` : ''}
             </div>
           </div>
         </body>
@@ -291,7 +291,7 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
                 </Button>
               </div>
               <p className="text-sm text-muted-foreground mt-3">
-                Use este número para entrar na sala do jogo e no Discord
+                 e no Discord
               </p>
             </div>
           )}
@@ -368,7 +368,7 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
               {ticket.slotNumber && (
                 <>
                   <li>• Entre na sala do jogo e aguarde no <strong className="text-foreground">Slot #{ticket.slotNumber}</strong></li>
-                  <li>• Use o mesmo número no Discord para call (opcional)</li>
+                  <li>• Use o mesmo número de Slot no Discord para call (opcional)</li>
                 </>
               )}
             </ul>
