@@ -8,11 +8,22 @@ import {
   Clock,
   XCircle,
   RefreshCw,
+  FileText,
+  Hash,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TicketSheet } from "@/components/TicketSheet";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+interface Tournament {
+  id: string;
+  name: string;
+  game: string;
+  game_mode: string;
+  start_date: string;
+}
 
 interface Participation {
   id: string;
@@ -20,11 +31,40 @@ interface Participation {
   payment_status: string;
   created_at: string;
   tournament_id: string;
+  slot_number: number | null;
+  partner_nick: string | null;
+  partner_2_nick: string | null;
+  partner_3_nick: string | null;
 }
+
+interface Profile {
+  full_name: string | null;
+  username: string | null;
+}
+
+const gameNames: Record<string, string> = {
+  freefire: "Free Fire",
+  valorant: "Valorant",
+  cs2: "Counter-Strike 2",
+  pubg: "PUBG Mobile",
+  codmobile: "Call of Duty Mobile",
+  wildrift: "Wild Rift",
+};
+
+const gameModeNames: Record<string, string> = {
+  solo: "Solo",
+  dupla: "Dupla",
+  trio: "Trio",
+  squad: "Squad",
+};
 
 export default function MyTicketsPage() {
   const [tickets, setTickets] = useState<Participation[]>([]);
+  const [tournaments, setTournaments] = useState<Record<string, Tournament>>({});
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedTicket, setSelectedTicket] = useState<Participation | null>(null);
+  const [isTicketSheetOpen, setIsTicketSheetOpen] = useState(false);
 
   const fetchTickets = async () => {
     setIsLoading(true);
@@ -36,6 +76,18 @@ export default function MyTicketsPage() {
         return;
       }
 
+      // Fetch profile
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("full_name, username")
+        .eq("id", user.id)
+        .single();
+
+      if (profileData) {
+        setProfile(profileData);
+      }
+
+      // Fetch participations
       const { data, error } = await supabase
         .from("participations")
         .select("*")
@@ -49,6 +101,23 @@ export default function MyTicketsPage() {
       }
 
       setTickets(data || []);
+
+      // Fetch tournament details for each participation
+      if (data && data.length > 0) {
+        const tournamentIds = [...new Set(data.map(t => t.tournament_id))];
+        const { data: tournamentsData } = await supabase
+          .from("tournaments")
+          .select("id, name, game, game_mode, start_date")
+          .in("id", tournamentIds);
+
+        if (tournamentsData) {
+          const tournamentsMap: Record<string, Tournament> = {};
+          tournamentsData.forEach(t => {
+            tournamentsMap[t.id] = t;
+          });
+          setTournaments(tournamentsMap);
+        }
+      }
     } catch (err) {
       console.error("Error:", err);
     } finally {
@@ -63,6 +132,11 @@ export default function MyTicketsPage() {
   const copyToken = (token: string) => {
     navigator.clipboard.writeText(token);
     toast.success("Token copiado!");
+  };
+
+  const handleViewTicket = (ticket: Participation) => {
+    setSelectedTicket(ticket);
+    setIsTicketSheetOpen(true);
   };
 
   const getStatusConfig = (status: string) => {
@@ -114,6 +188,8 @@ export default function MyTicketsPage() {
       minute: "2-digit",
     });
   };
+
+  const selectedTournament = selectedTicket ? tournaments[selectedTicket.tournament_id] : null;
 
   return (
     <div className="min-h-screen bg-background p-6 lg:p-10">
@@ -176,6 +252,7 @@ export default function MyTicketsPage() {
           {tickets.map((ticket) => {
             const statusConfig = getStatusConfig(ticket.payment_status);
             const StatusIcon = statusConfig.icon;
+            const tournament = tournaments[ticket.tournament_id];
 
             return (
               <div
@@ -189,15 +266,29 @@ export default function MyTicketsPage() {
                     </div>
                     <div>
                       <h3 className="font-display font-bold text-lg mb-1">
-                        Free Fire Pro League
+                        {tournament?.name || "Torneio"}
                       </h3>
                       <p className="text-sm text-muted-foreground">
+                        {tournament ? gameNames[tournament.game] || tournament.game : ""} 
+                        {tournament?.game_mode ? ` • ${gameModeNames[tournament.game_mode] || tournament.game_mode}` : ""}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
                         Inscrito em {formatDate(ticket.created_at)}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                    {/* Slot Badge */}
+                    {ticket.payment_status === "paid" && ticket.slot_number && (
+                      <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 rounded-full">
+                        <Hash size={14} className="text-amber-500" />
+                        <span className="font-bold text-amber-500">
+                          Slot {ticket.slot_number}
+                        </span>
+                      </div>
+                    )}
+
                     {/* Status Badge */}
                     <div
                       className={cn(
@@ -216,12 +307,12 @@ export default function MyTicketsPage() {
                       </span>
                     </div>
 
-                    {/* Token */}
+                    {/* Token & Actions */}
                     {ticket.payment_status === "paid" && ticket.unique_token && (
                       <div className="flex items-center gap-2">
                         <div className="bg-primary/10 border border-primary/30 px-4 py-2 rounded-lg">
-                          <span className="font-mono font-bold text-primary">
-                            {ticket.unique_token}
+                          <span className="font-mono font-bold text-primary text-sm">
+                            {ticket.unique_token.slice(0, 8)}...
                           </span>
                         </div>
                         <Button
@@ -230,6 +321,13 @@ export default function MyTicketsPage() {
                           onClick={() => copyToken(ticket.unique_token)}
                         >
                           <Copy size={16} />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => handleViewTicket(ticket)}
+                        >
+                          <FileText size={16} />
                         </Button>
                       </div>
                     )}
@@ -245,6 +343,30 @@ export default function MyTicketsPage() {
             );
           })}
         </div>
+      )}
+
+      {/* Ticket Sheet Modal */}
+      {selectedTicket && selectedTournament && (
+        <TicketSheet
+          isOpen={isTicketSheetOpen}
+          onClose={() => {
+            setIsTicketSheetOpen(false);
+            setSelectedTicket(null);
+          }}
+          ticket={{
+            uniqueToken: selectedTicket.unique_token,
+            slotNumber: selectedTicket.slot_number,
+            tournamentName: selectedTournament.name,
+            tournamentGame: gameNames[selectedTournament.game] || selectedTournament.game,
+            tournamentGameMode: gameModeNames[selectedTournament.game_mode] || selectedTournament.game_mode,
+            tournamentDate: selectedTournament.start_date,
+            playerName: profile?.full_name || "Jogador",
+            playerNick: profile?.username || undefined,
+            partnerNick: selectedTicket.partner_nick || undefined,
+            partner2Nick: selectedTicket.partner_2_nick || undefined,
+            partner3Nick: selectedTicket.partner_3_nick || undefined,
+          }}
+        />
       )}
     </div>
   );

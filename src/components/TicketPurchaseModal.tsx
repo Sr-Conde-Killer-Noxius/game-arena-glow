@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { X, Users, User, Info, AlertCircle, Copy, CheckCircle2, Clock, QrCode } from "lucide-react";
+import { X, Users, User, Info, AlertCircle, Copy, CheckCircle2, Clock, QrCode, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileUpload } from "./FileUpload";
+import { TicketSheet } from "./TicketSheet";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +14,9 @@ interface TicketPurchaseModalProps {
   onClose: () => void;
   tournamentName: string;
   tournamentId?: string;
+  tournamentGame?: string;
+  tournamentGameMode?: string;
+  tournamentDate?: string;
 }
 
 type TicketType = "individual" | "duo";
@@ -35,6 +39,9 @@ export function TicketPurchaseModal({
   onClose,
   tournamentName,
   tournamentId = "demo-tournament",
+  tournamentGame = "freefire",
+  tournamentGameMode = "solo",
+  tournamentDate = "",
 }: TicketPurchaseModalProps) {
   const [step, setStep] = useState<Step>("form");
   const [ticketType, setTicketType] = useState<TicketType>("individual");
@@ -45,6 +52,8 @@ export function TicketPurchaseModal({
     pixQrCodeBase64: string;
   } | null>(null);
   const [uniqueToken, setUniqueToken] = useState<string | null>(null);
+  const [slotNumber, setSlotNumber] = useState<number | null>(null);
+  const [isTicketSheetOpen, setIsTicketSheetOpen] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     fullName: "",
     cpf: "",
@@ -80,10 +89,11 @@ export function TicketPurchaseModal({
         },
         (payload) => {
           console.log("Realtime update received:", payload);
-          const newData = payload.new as { payment_status: string; unique_token: string };
+          const newData = payload.new as { payment_status: string; unique_token: string; slot_number: number | null };
           
           if (newData.payment_status === "paid") {
             setUniqueToken(newData.unique_token);
+            setSlotNumber(newData.slot_number);
             setStep("success");
             toast.success("Pagamento confirmado!");
           }
@@ -107,6 +117,7 @@ export function TicketPurchaseModal({
 
         if (data.isPaid && data.token) {
           setUniqueToken(data.token);
+          setSlotNumber(data.slotNumber || null);
           setStep("success");
           toast.success("Pagamento confirmado!");
         }
@@ -305,7 +316,9 @@ export function TicketPurchaseModal({
     setStep("form");
     setPixData(null);
     setUniqueToken(null);
+    setSlotNumber(null);
     setParticipationId(null);
+    setIsTicketSheetOpen(false);
     setFormData({
       fullName: "",
       cpf: "",
@@ -318,6 +331,22 @@ export function TicketPurchaseModal({
       discordProfile: null,
     });
     onClose();
+  };
+
+  const gameNames: Record<string, string> = {
+    freefire: "Free Fire",
+    valorant: "Valorant",
+    cs2: "Counter-Strike 2",
+    pubg: "PUBG Mobile",
+    codmobile: "Call of Duty Mobile",
+    wildrift: "Wild Rift",
+  };
+
+  const gameModeNames: Record<string, string> = {
+    solo: "Solo",
+    dupla: "Dupla",
+    trio: "Trio",
+    squad: "Squad",
   };
 
   if (!isOpen) return null;
@@ -710,6 +739,19 @@ export function TicketPurchaseModal({
               </Button>
             </div>
 
+            {/* Slot Display */}
+            {slotNumber && (
+              <div className="bg-amber-500/10 border-2 border-amber-500 rounded-xl p-6 text-center">
+                <p className="text-sm text-muted-foreground mb-2">Seu Slot:</p>
+                <p className="font-display text-4xl font-bold text-amber-500 tracking-wider">
+                  #{slotNumber}
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Use este número para entrar na sala do jogo
+                </p>
+              </div>
+            )}
+
             <div className="bg-muted/50 rounded-lg p-4 text-sm text-muted-foreground">
               <p className="font-medium text-foreground mb-2">Importante:</p>
               <ul className="list-disc list-inside space-y-1">
@@ -719,17 +761,43 @@ export function TicketPurchaseModal({
               </ul>
             </div>
 
-            <Button
-              variant="default"
-              size="lg"
-              className="w-full"
-              onClick={handleClose}
-            >
-              Concluir
-            </Button>
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => setIsTicketSheetOpen(true)}
+                className="gap-2"
+              >
+                <FileText size={18} />
+                Ver Ficha
+              </Button>
+              <Button
+                variant="default"
+                size="lg"
+                onClick={handleClose}
+              >
+                Concluir
+              </Button>
+            </div>
           </div>
         )}
       </div>
+
+      {/* Ticket Sheet Modal */}
+      <TicketSheet
+        isOpen={isTicketSheetOpen}
+        onClose={() => setIsTicketSheetOpen(false)}
+        ticket={{
+          uniqueToken: uniqueToken || "",
+          slotNumber: slotNumber,
+          tournamentName: tournamentName,
+          tournamentGame: gameNames[tournamentGame] || tournamentGame,
+          tournamentGameMode: gameModeNames[tournamentGameMode] || tournamentGameMode,
+          tournamentDate: tournamentDate,
+          playerName: formData.fullName,
+          partnerNick: formData.partnerNick || undefined,
+        }}
+      />
     </div>
   );
 }
