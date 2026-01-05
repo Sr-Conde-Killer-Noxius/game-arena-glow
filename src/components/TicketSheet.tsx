@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { X, Printer, Download, Copy, Users, User, Hash, Trophy, Calendar, MapPin } from "lucide-react";
+import { X, Printer, Copy, Users, User, Hash, Trophy, Calendar, Phone, MapPin, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -17,9 +17,16 @@ interface TicketSheetProps {
     tournamentDate: string;
     playerName: string;
     playerNick?: string;
+    playerGameId?: string;
+    playerCpf?: string;
+    playerCep?: string;
+    playerWhatsapp?: string;
     partnerNick?: string;
+    partnerGameId?: string;
     partner2Nick?: string;
+    partner2GameId?: string;
     partner3Nick?: string;
+    partner3GameId?: string;
   };
 }
 
@@ -37,6 +44,12 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
       toast.error("Não foi possível abrir a janela de impressão");
       return;
     }
+
+    // Build partners info for print
+    const partnersInfo = [];
+    if (ticket.partnerNick) partnersInfo.push({ nick: ticket.partnerNick, id: ticket.partnerGameId });
+    if (ticket.partner2Nick) partnersInfo.push({ nick: ticket.partner2Nick, id: ticket.partner2GameId });
+    if (ticket.partner3Nick) partnersInfo.push({ nick: ticket.partner3Nick, id: ticket.partner3GameId });
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -111,13 +124,21 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
               margin-top: 4px;
             }
             .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+            .info-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
             .info-item label { 
               font-size: 12px; 
               color: #6b7280; 
               display: block;
               margin-bottom: 4px;
             }
-            .info-item span { font-weight: 600; font-size: 16px; }
+            .info-item span { font-weight: 600; font-size: 14px; }
+            .partner-row {
+              display: flex;
+              gap: 16px;
+              padding: 8px 0;
+              border-bottom: 1px solid #f3f4f6;
+            }
+            .partner-row:last-child { border-bottom: none; }
             .footer {
               background: #f9fafb;
               padding: 16px 24px;
@@ -176,7 +197,7 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
                 </div>
               </div>
               <div class="section">
-                <div class="section-title">Jogador</div>
+                <div class="section-title">Jogador Principal</div>
                 <div class="info-grid">
                   <div class="info-item">
                     <label>Nome</label>
@@ -188,16 +209,49 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
                     <span>${ticket.playerNick}</span>
                   </div>
                   ` : ''}
-                </div>
-                ${ticket.partnerNick ? `
-                <div style="margin-top: 12px;">
+                  ${ticket.playerGameId ? `
                   <div class="info-item">
-                    <label>Parceiro(s)</label>
-                    <span>${[ticket.partnerNick, ticket.partner2Nick, ticket.partner3Nick].filter(Boolean).join(', ')}</span>
+                    <label>ID do Jogo</label>
+                    <span>${ticket.playerGameId}</span>
+                  </div>
+                  ` : ''}
+                  ${ticket.playerCpf ? `
+                  <div class="info-item">
+                    <label>CPF</label>
+                    <span>${ticket.playerCpf}</span>
+                  </div>
+                  ` : ''}
+                  ${ticket.playerCep ? `
+                  <div class="info-item">
+                    <label>CEP</label>
+                    <span>${ticket.playerCep}</span>
+                  </div>
+                  ` : ''}
+                  ${ticket.playerWhatsapp ? `
+                  <div class="info-item">
+                    <label>WhatsApp</label>
+                    <span>${ticket.playerWhatsapp}</span>
+                  </div>
+                  ` : ''}
+                </div>
+              </div>
+              ${partnersInfo.length > 0 ? `
+              <div class="section">
+                <div class="section-title">Parceiro(s)</div>
+                ${partnersInfo.map((p, i) => `
+                <div class="partner-row">
+                  <div class="info-item">
+                    <label>Parceiro ${i + 1}</label>
+                    <span>${p.nick}</span>
+                  </div>
+                  <div class="info-item">
+                    <label>ID</label>
+                    <span>${p.id || '-'}</span>
                   </div>
                 </div>
-                ` : ''}
+                `).join('')}
               </div>
+              ` : ''}
             </div>
             <div class="footer">
               <strong>Instruções:</strong><br/>
@@ -238,6 +292,12 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
   const formattedDate = ticket.tournamentDate 
     ? format(new Date(ticket.tournamentDate), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })
     : "A definir";
+
+  // Build partners list
+  const partners = [];
+  if (ticket.partnerNick) partners.push({ nick: ticket.partnerNick, id: ticket.partnerGameId });
+  if (ticket.partner2Nick) partners.push({ nick: ticket.partner2Nick, id: ticket.partner2GameId });
+  if (ticket.partner3Nick) partners.push({ nick: ticket.partner3Nick, id: ticket.partner3GameId });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -291,7 +351,7 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
                 </Button>
               </div>
               <p className="text-sm text-muted-foreground mt-3">
-                 e no Discord
+                Use este número quando entrar na sala e no Discord
               </p>
             </div>
           )}
@@ -332,7 +392,7 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
           <div className="space-y-4">
             <h3 className="font-display font-bold flex items-center gap-2">
               <User size={18} className="text-primary" />
-              Jogador
+              Jogador Principal
             </h3>
             <div className="bg-muted/50 rounded-lg p-4 space-y-3">
               <div className="grid grid-cols-2 gap-4">
@@ -347,18 +407,66 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
                   </div>
                 )}
               </div>
-              {ticket.partnerNick && (
+              {ticket.playerGameId && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Parceiro(s)</p>
-                  <p className="font-medium">
-                    {[ticket.partnerNick, ticket.partner2Nick, ticket.partner3Nick]
-                      .filter(Boolean)
-                      .join(", ")}
+                  <p className="text-xs text-muted-foreground">ID do Jogo</p>
+                  <p className="font-medium">{ticket.playerGameId}</p>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                {ticket.playerCpf && (
+                  <div>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <FileText size={12} /> CPF
+                    </p>
+                    <p className="font-medium">{ticket.playerCpf}</p>
+                  </div>
+                )}
+                {ticket.playerCep && (
+                  <div>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <MapPin size={12} /> CEP
+                    </p>
+                    <p className="font-medium">{ticket.playerCep}</p>
+                  </div>
+                )}
+              </div>
+              {ticket.playerWhatsapp && (
+                <div>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Phone size={12} /> WhatsApp
                   </p>
+                  <p className="font-medium">{ticket.playerWhatsapp}</p>
                 </div>
               )}
             </div>
           </div>
+
+          {/* Partners Info */}
+          {partners.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="font-display font-bold flex items-center gap-2">
+                <Users size={18} className="text-primary" />
+                Parceiro(s)
+              </h3>
+              <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                {partners.map((partner, index) => (
+                  <div key={index} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Parceiro {index + 1}</p>
+                      <p className="font-medium">{partner.nick}</p>
+                    </div>
+                    {partner.id && (
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">ID</p>
+                        <p className="font-medium">{partner.id}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Instructions */}
           <div className="bg-muted/30 border border-border rounded-lg p-4">

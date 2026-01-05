@@ -16,14 +16,22 @@ export type Database = {
     Tables: {
       participations: {
         Row: {
+          cep: string | null
+          cpf: string | null
           created_at: string
+          full_name: string | null
           id: string
           mercado_pago_payment_id: string | null
+          partner_2_game_id: string | null
           partner_2_nick: string | null
+          partner_3_game_id: string | null
           partner_3_nick: string | null
+          partner_game_id: string | null
           partner_nick: string | null
           payment_created_at: string | null
           payment_status: Database["public"]["Enums"]["payment_status"]
+          player_game_id: string | null
+          player_nick: string | null
           screenshot_1_url: string | null
           screenshot_2_url: string | null
           screenshot_3_url: string | null
@@ -33,16 +41,25 @@ export type Database = {
           unique_token: string
           updated_at: string
           user_id: string
+          whatsapp: string | null
         }
         Insert: {
+          cep?: string | null
+          cpf?: string | null
           created_at?: string
+          full_name?: string | null
           id?: string
           mercado_pago_payment_id?: string | null
+          partner_2_game_id?: string | null
           partner_2_nick?: string | null
+          partner_3_game_id?: string | null
           partner_3_nick?: string | null
+          partner_game_id?: string | null
           partner_nick?: string | null
           payment_created_at?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
+          player_game_id?: string | null
+          player_nick?: string | null
           screenshot_1_url?: string | null
           screenshot_2_url?: string | null
           screenshot_3_url?: string | null
@@ -52,16 +69,25 @@ export type Database = {
           unique_token?: string
           updated_at?: string
           user_id: string
+          whatsapp?: string | null
         }
         Update: {
+          cep?: string | null
+          cpf?: string | null
           created_at?: string
+          full_name?: string | null
           id?: string
           mercado_pago_payment_id?: string | null
+          partner_2_game_id?: string | null
           partner_2_nick?: string | null
+          partner_3_game_id?: string | null
           partner_3_nick?: string | null
+          partner_game_id?: string | null
           partner_nick?: string | null
           payment_created_at?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
+          player_game_id?: string | null
+          player_nick?: string | null
           screenshot_1_url?: string | null
           screenshot_2_url?: string | null
           screenshot_3_url?: string | null
@@ -71,6 +97,7 @@ export type Database = {
           unique_token?: string
           updated_at?: string
           user_id?: string
+          whatsapp?: string | null
         }
         Relationships: [
           {
@@ -232,6 +259,7 @@ export type Database = {
           created_at: string
           description: string | null
           end_date: string | null
+          end_date_pending: boolean
           entry_fee: number
           game: Database["public"]["Enums"]["game_type"]
           game_mode: Database["public"]["Enums"]["game_mode"]
@@ -241,6 +269,7 @@ export type Database = {
           prize_pool: number
           rules: string | null
           start_date: string
+          start_date_pending: boolean
           status: Database["public"]["Enums"]["tournament_status"]
           updated_at: string
         }
@@ -249,6 +278,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           end_date?: string | null
+          end_date_pending?: boolean
           entry_fee?: number
           game: Database["public"]["Enums"]["game_type"]
           game_mode?: Database["public"]["Enums"]["game_mode"]
@@ -258,6 +288,7 @@ export type Database = {
           prize_pool?: number
           rules?: string | null
           start_date: string
+          start_date_pending?: boolean
           status?: Database["public"]["Enums"]["tournament_status"]
           updated_at?: string
         }
@@ -266,6 +297,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           end_date?: string | null
+          end_date_pending?: boolean
           entry_fee?: number
           game?: Database["public"]["Enums"]["game_type"]
           game_mode?: Database["public"]["Enums"]["game_mode"]
@@ -275,6 +307,7 @@ export type Database = {
           prize_pool?: number
           rules?: string | null
           start_date?: string
+          start_date_pending?: boolean
           status?: Database["public"]["Enums"]["tournament_status"]
           updated_at?: string
         }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Users, User, Info, AlertCircle, Copy, CheckCircle2, Clock, QrCode, FileText } from "lucide-react";
+import { X, Users, User, Info, AlertCircle, Copy, CheckCircle2, Clock, QrCode, FileText, Gamepad2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,9 +17,9 @@ interface TicketPurchaseModalProps {
   tournamentGame?: string;
   tournamentGameMode?: string;
   tournamentDate?: string;
+  entryFee?: number;
 }
 
-type TicketType = "individual" | "duo";
 type Step = "form" | "pix" | "success";
 
 interface FormData {
@@ -27,7 +27,15 @@ interface FormData {
   cpf: string;
   cep: string;
   email: string;
+  whatsapp: string;
+  playerNick: string;
+  playerGameId: string;
   partnerNick: string;
+  partnerGameId: string;
+  partner2Nick: string;
+  partner2GameId: string;
+  partner3Nick: string;
+  partner3GameId: string;
   gameProfile: File | null;
   instagramProof: File | null;
   whatsappProof: File | null;
@@ -42,9 +50,9 @@ export function TicketPurchaseModal({
   tournamentGame = "freefire",
   tournamentGameMode = "solo",
   tournamentDate = "",
+  entryFee = 2.5,
 }: TicketPurchaseModalProps) {
   const [step, setStep] = useState<Step>("form");
-  const [ticketType, setTicketType] = useState<TicketType>("individual");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [participationId, setParticipationId] = useState<string | null>(null);
   const [pixData, setPixData] = useState<{
@@ -59,16 +67,69 @@ export function TicketPurchaseModal({
     cpf: "",
     cep: "",
     email: "",
+    whatsapp: "",
+    playerNick: "",
+    playerGameId: "",
     partnerNick: "",
+    partnerGameId: "",
+    partner2Nick: "",
+    partner2GameId: "",
+    partner3Nick: "",
+    partner3GameId: "",
     gameProfile: null,
     instagramProof: null,
     whatsappProof: null,
     discordProfile: null,
   });
 
-  const price = ticketType === "individual" ? 2.5 : 5.0;
+  const price = entryFee;
   const prizeShare = (price * 0.7).toFixed(2);
   const organizationShare = (price * 0.3).toFixed(2);
+
+  // Calculate how many partners are needed based on game mode
+  const getPartnersCount = () => {
+    switch (tournamentGameMode) {
+      case "dupla": return 1;
+      case "trio": return 2;
+      case "squad": return 3;
+      default: return 0;
+    }
+  };
+  const partnersCount = getPartnersCount();
+
+  // Load profile data when modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const loadProfileData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, cpf, cep, whatsapp")
+        .eq("id", user.id)
+        .single();
+
+      if (profile) {
+        setFormData(prev => ({
+          ...prev,
+          fullName: profile.full_name || "",
+          cpf: profile.cpf || "",
+          cep: profile.cep || "",
+          whatsapp: profile.whatsapp || "",
+          email: user.email || "",
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          email: user.email || "",
+        }));
+      }
+    };
+
+    loadProfileData();
+  }, [isOpen]);
 
   // Listen for payment status updates via Supabase Realtime
   useEffect(() => {
@@ -147,6 +208,14 @@ export function TicketPurchaseModal({
     return numbers.replace(/(\d{5})(\d)/, "$1-$2").slice(0, 9);
   };
 
+  const formatWhatsApp = (value: string) => {
+    const numbers = value.replace(/\D/g, "");
+    return numbers
+      .replace(/(\d{2})(\d)/, "($1) $2")
+      .replace(/(\d{5})(\d)/, "$1-$2")
+      .slice(0, 15);
+  };
+
   const uploadFile = async (file: File, userId: string, fieldName: string): Promise<string | null> => {
     const fileExt = file.name.split(".").pop();
     const fileName = `${userId}/${fieldName}-${Date.now()}.${fileExt}`;
@@ -171,8 +240,13 @@ export function TicketPurchaseModal({
     e.preventDefault();
 
     // Validate required fields
-    if (!formData.fullName || !formData.cpf || !formData.cep || !formData.email) {
+    if (!formData.fullName || !formData.cpf || !formData.cep || !formData.email || !formData.whatsapp) {
       toast.error("Preencha todos os campos obrigatórios!");
+      return;
+    }
+
+    if (!formData.playerNick || !formData.playerGameId) {
+      toast.error("Preencha seu Nick e ID do jogo!");
       return;
     }
 
@@ -181,8 +255,17 @@ export function TicketPurchaseModal({
       return;
     }
 
-    if (ticketType === "duo" && !formData.partnerNick) {
-      toast.error("Informe o nick do seu parceiro!");
+    // Validate partners based on game mode
+    if (partnersCount >= 1 && (!formData.partnerNick || !formData.partnerGameId)) {
+      toast.error("Preencha o Nick e ID do parceiro!");
+      return;
+    }
+    if (partnersCount >= 2 && (!formData.partner2Nick || !formData.partner2GameId)) {
+      toast.error("Preencha o Nick e ID do segundo parceiro!");
+      return;
+    }
+    if (partnersCount >= 3 && (!formData.partner3Nick || !formData.partner3GameId)) {
+      toast.error("Preencha o Nick e ID do terceiro parceiro!");
       return;
     }
 
@@ -197,6 +280,17 @@ export function TicketPurchaseModal({
         setIsSubmitting(false);
         return;
       }
+
+      // Update profile with form data (sync to /profile)
+      await supabase
+        .from("profiles")
+        .update({
+          full_name: formData.fullName,
+          cpf: formData.cpf,
+          cep: formData.cep,
+          whatsapp: formData.whatsapp,
+        })
+        .eq("id", user.id);
 
       // Check if user already has a pending participation for this tournament
       const { data: existingParticipation } = await supabase
@@ -225,7 +319,7 @@ export function TicketPurchaseModal({
           formData.discordProfile ? uploadFile(formData.discordProfile, user.id, "discord-profile") : null,
         ]);
 
-        // Create participation record
+        // Create participation record with all user data
         const { data: participation, error: participationError } = await supabase
           .from("participations")
           .insert({
@@ -236,6 +330,20 @@ export function TicketPurchaseModal({
             screenshot_2_url: instagramUrl,
             screenshot_3_url: whatsappUrl,
             screenshot_4_url: discordUrl,
+            // User data for ticket
+            full_name: formData.fullName,
+            cpf: formData.cpf,
+            cep: formData.cep,
+            whatsapp: formData.whatsapp,
+            player_nick: formData.playerNick,
+            player_game_id: formData.playerGameId,
+            // Partner data
+            partner_nick: formData.partnerNick || null,
+            partner_game_id: formData.partnerGameId || null,
+            partner_2_nick: formData.partner2Nick || null,
+            partner_2_game_id: formData.partner2GameId || null,
+            partner_3_nick: formData.partner3Nick || null,
+            partner_3_game_id: formData.partner3GameId || null,
           })
           .select()
           .single();
@@ -249,7 +357,7 @@ export function TicketPurchaseModal({
 
         currentParticipationId = participation.id;
       } else {
-        // Update existing participation with new screenshots if needed
+        // Update existing participation with new screenshots and data
         const [gameProfileUrl, instagramUrl, whatsappUrl, discordUrl] = await Promise.all([
           uploadFile(formData.gameProfile!, user.id, "game-profile"),
           uploadFile(formData.instagramProof!, user.id, "instagram-proof"),
@@ -264,6 +372,20 @@ export function TicketPurchaseModal({
             screenshot_2_url: instagramUrl,
             screenshot_3_url: whatsappUrl,
             screenshot_4_url: discordUrl,
+            // User data for ticket
+            full_name: formData.fullName,
+            cpf: formData.cpf,
+            cep: formData.cep,
+            whatsapp: formData.whatsapp,
+            player_nick: formData.playerNick,
+            player_game_id: formData.playerGameId,
+            // Partner data
+            partner_nick: formData.partnerNick || null,
+            partner_game_id: formData.partnerGameId || null,
+            partner_2_nick: formData.partner2Nick || null,
+            partner_2_game_id: formData.partner2GameId || null,
+            partner_3_nick: formData.partner3Nick || null,
+            partner_3_game_id: formData.partner3GameId || null,
           })
           .eq("id", existingParticipation.id);
       }
@@ -277,7 +399,7 @@ export function TicketPurchaseModal({
           body: {
             participationId: currentParticipationId,
             amount: price,
-            description: `Ingresso ${ticketType === "duo" ? "Dupla" : "Individual"} - ${tournamentName}`,
+            description: `Ingresso ${tournamentGameMode} - ${tournamentName}`,
             payerEmail: formData.email,
             payerName: formData.fullName,
             payerCpf: formData.cpf,
@@ -324,7 +446,15 @@ export function TicketPurchaseModal({
       cpf: "",
       cep: "",
       email: "",
+      whatsapp: "",
+      playerNick: "",
+      playerGameId: "",
       partnerNick: "",
+      partnerGameId: "",
+      partner2Nick: "",
+      partner2GameId: "",
+      partner3Nick: "",
+      partner3GameId: "",
       gameProfile: null,
       instagramProof: null,
       whatsappProof: null,
@@ -382,65 +512,16 @@ export function TicketPurchaseModal({
         {/* STEP 1: Form */}
         {step === "form" && (
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            {/* Ticket Type Selection */}
-            <div className="space-y-3">
-              <Label className="text-base">Tipo de Ingresso</Label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setTicketType("individual")}
-                  className={cn(
-                    "p-4 rounded-lg border-2 transition-all text-left",
-                    ticketType === "individual"
-                      ? "border-primary bg-primary/10"
-                      : "border-border hover:border-primary/50"
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={cn(
-                        "w-10 h-10 rounded-lg flex items-center justify-center",
-                        ticketType === "individual"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground"
-                      )}
-                    >
-                      <User size={20} />
-                    </div>
-                    <div>
-                      <p className="font-bold">Individual</p>
-                      <p className="text-lg font-display text-primary">R$ 2,50</p>
-                    </div>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setTicketType("duo")}
-                  className={cn(
-                    "p-4 rounded-lg border-2 transition-all text-left",
-                    ticketType === "duo"
-                      ? "border-primary bg-primary/10"
-                      : "border-border hover:border-primary/50"
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={cn(
-                        "w-10 h-10 rounded-lg flex items-center justify-center",
-                        ticketType === "duo"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground"
-                      )}
-                    >
-                      <Users size={20} />
-                    </div>
-                    <div>
-                      <p className="font-bold">Dupla</p>
-                      <p className="text-lg font-display text-primary">R$ 5,00</p>
-                    </div>
-                  </div>
-                </button>
+            {/* Game Mode Info */}
+            <div className="bg-primary/10 border border-primary/30 rounded-lg p-4 flex items-center gap-3">
+              <Gamepad2 className="text-primary shrink-0" size={24} />
+              <div>
+                <p className="font-medium text-foreground">
+                  Modo: {gameModeNames[tournamentGameMode] || tournamentGameMode}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {partnersCount === 0 ? "Inscrição individual" : `Você + ${partnersCount} parceiro${partnersCount > 1 ? "s" : ""}`}
+                </p>
               </div>
             </div>
 
@@ -535,23 +616,188 @@ export function TicketPurchaseModal({
                 </div>
               </div>
 
-              {ticketType === "duo" && (
+              <div className="space-y-2">
+                <Label htmlFor="whatsapp">
+                  WhatsApp <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="whatsapp"
+                  placeholder="(00) 00000-0000"
+                  value={formData.whatsapp}
+                  onChange={(e) =>
+                    setFormData({ ...formData, whatsapp: formatWhatsApp(e.target.value) })
+                  }
+                  maxLength={15}
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Game Profile Data */}
+            <div className="space-y-4">
+              <h3 className="font-display font-bold text-lg border-b border-border pb-2 flex items-center gap-2">
+                <User size={18} className="text-primary" />
+                Seus Dados no Jogo
+              </h3>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="partnerNick">
-                    Nick do Parceiro <span className="text-destructive">*</span>
+                  <Label htmlFor="playerNick">
+                    Seu Nick <span className="text-destructive">*</span>
                   </Label>
                   <Input
-                    id="partnerNick"
-                    placeholder="Nick do seu parceiro no jogo"
-                    value={formData.partnerNick}
+                    id="playerNick"
+                    placeholder="Seu nick no jogo"
+                    value={formData.playerNick}
                     onChange={(e) =>
-                      setFormData({ ...formData, partnerNick: e.target.value })
+                      setFormData({ ...formData, playerNick: e.target.value })
                     }
                     required
                   />
                 </div>
-              )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="playerGameId">
+                    Seu ID <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="playerGameId"
+                    placeholder="Seu ID no jogo"
+                    value={formData.playerGameId}
+                    onChange={(e) =>
+                      setFormData({ ...formData, playerGameId: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+              </div>
             </div>
+
+            {/* Partner Data - Only show if game mode requires partners */}
+            {partnersCount >= 1 && (
+              <div className="space-y-4">
+                <h3 className="font-display font-bold text-lg border-b border-border pb-2 flex items-center gap-2">
+                  <Users size={18} className="text-primary" />
+                  Dados do Parceiro
+                </h3>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="partnerNick">
+                      Nick do Parceiro <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="partnerNick"
+                      placeholder="Nick do parceiro"
+                      value={formData.partnerNick}
+                      onChange={(e) =>
+                        setFormData({ ...formData, partnerNick: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="partnerGameId">
+                      ID do Parceiro <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="partnerGameId"
+                      placeholder="ID do parceiro"
+                      value={formData.partnerGameId}
+                      onChange={(e) =>
+                        setFormData({ ...formData, partnerGameId: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Partner 2 Data - Only show for trio and squad */}
+            {partnersCount >= 2 && (
+              <div className="space-y-4">
+                <h3 className="font-display font-bold text-lg border-b border-border pb-2 flex items-center gap-2">
+                  <Users size={18} className="text-primary" />
+                  Dados do 2º Parceiro
+                </h3>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="partner2Nick">
+                      Nick do 2º Parceiro <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="partner2Nick"
+                      placeholder="Nick do 2º parceiro"
+                      value={formData.partner2Nick}
+                      onChange={(e) =>
+                        setFormData({ ...formData, partner2Nick: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="partner2GameId">
+                      ID do 2º Parceiro <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="partner2GameId"
+                      placeholder="ID do 2º parceiro"
+                      value={formData.partner2GameId}
+                      onChange={(e) =>
+                        setFormData({ ...formData, partner2GameId: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Partner 3 Data - Only show for squad */}
+            {partnersCount >= 3 && (
+              <div className="space-y-4">
+                <h3 className="font-display font-bold text-lg border-b border-border pb-2 flex items-center gap-2">
+                  <Users size={18} className="text-primary" />
+                  Dados do 3º Parceiro
+                </h3>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="partner3Nick">
+                      Nick do 3º Parceiro <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="partner3Nick"
+                      placeholder="Nick do 3º parceiro"
+                      value={formData.partner3Nick}
+                      onChange={(e) =>
+                        setFormData({ ...formData, partner3Nick: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="partner3GameId">
+                      ID do 3º Parceiro <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="partner3GameId"
+                      placeholder="ID do 3º parceiro"
+                      value={formData.partner3GameId}
+                      onChange={(e) =>
+                        setFormData({ ...formData, partner3GameId: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Required Uploads */}
             <div className="space-y-4">
@@ -563,7 +809,7 @@ export function TicketPurchaseModal({
               <div className="grid gap-4">
                 <FileUpload
                   label="Perfil do Jogo"
-                  description="Print mostrando seu ID/Nick no Free Fire"
+                  description="Print mostrando seu ID/Nick no jogo"
                   required
                   value={formData.gameProfile}
                   onChange={(file) =>
@@ -795,7 +1041,17 @@ export function TicketPurchaseModal({
           tournamentGameMode: gameModeNames[tournamentGameMode] || tournamentGameMode,
           tournamentDate: tournamentDate,
           playerName: formData.fullName,
+          playerNick: formData.playerNick,
+          playerGameId: formData.playerGameId,
+          playerCpf: formData.cpf,
+          playerCep: formData.cep,
+          playerWhatsapp: formData.whatsapp,
           partnerNick: formData.partnerNick || undefined,
+          partnerGameId: formData.partnerGameId || undefined,
+          partner2Nick: formData.partner2Nick || undefined,
+          partner2GameId: formData.partner2GameId || undefined,
+          partner3Nick: formData.partner3Nick || undefined,
+          partner3GameId: formData.partner3GameId || undefined,
         }}
       />
     </div>

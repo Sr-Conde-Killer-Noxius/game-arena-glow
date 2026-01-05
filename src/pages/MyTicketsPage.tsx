@@ -32,9 +32,20 @@ interface Participation {
   created_at: string;
   tournament_id: string;
   slot_number: number | null;
+  // User data
+  full_name: string | null;
+  cpf: string | null;
+  cep: string | null;
+  whatsapp: string | null;
+  player_nick: string | null;
+  player_game_id: string | null;
+  // Partner data
   partner_nick: string | null;
+  partner_game_id: string | null;
   partner_2_nick: string | null;
+  partner_2_game_id: string | null;
   partner_3_nick: string | null;
+  partner_3_game_id: string | null;
 }
 
 interface Profile {
@@ -87,7 +98,7 @@ export default function MyTicketsPage() {
         setProfile(profileData);
       }
 
-      // Fetch participations
+      // Fetch participations with all user data
       const { data, error } = await supabase
         .from("participations")
         .select("*")
@@ -360,11 +371,19 @@ export default function MyTicketsPage() {
             tournamentGame: gameNames[selectedTournament.game] || selectedTournament.game,
             tournamentGameMode: gameModeNames[selectedTournament.game_mode] || selectedTournament.game_mode,
             tournamentDate: selectedTournament.start_date,
-            playerName: profile?.full_name || "Jogador",
-            playerNick: profile?.username || undefined,
+            // Use data from participation (filled at purchase time)
+            playerName: selectedTicket.full_name || profile?.full_name || "Jogador",
+            playerNick: selectedTicket.player_nick || profile?.username || undefined,
+            playerGameId: selectedTicket.player_game_id || undefined,
+            playerCpf: selectedTicket.cpf || undefined,
+            playerCep: selectedTicket.cep || undefined,
+            playerWhatsapp: selectedTicket.whatsapp || undefined,
             partnerNick: selectedTicket.partner_nick || undefined,
+            partnerGameId: selectedTicket.partner_game_id || undefined,
             partner2Nick: selectedTicket.partner_2_nick || undefined,
+            partner2GameId: selectedTicket.partner_2_game_id || undefined,
             partner3Nick: selectedTicket.partner_3_nick || undefined,
+            partner3GameId: selectedTicket.partner_3_game_id || undefined,
           }}
         />
       )}
