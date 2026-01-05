@@ -48,6 +48,13 @@ const gameNames: Record<string, string> = {
   wildrift: "Wild Rift",
 };
 
+const gameModeNames: Record<string, string> = {
+  solo: "Solo",
+  dupla: "Dupla",
+  trio: "Trio",
+  squad: "Squad",
+};
+
 interface Tournament {
   id: string;
   name: string;
@@ -57,6 +64,8 @@ interface Tournament {
   game_mode: string;
   start_date: string;
   end_date: string | null;
+  start_date_pending: boolean;
+  end_date_pending: boolean;
   entry_fee: number;
   prize_pool: number;
   max_participants: number | null;
@@ -173,7 +182,8 @@ export default function TournamentPage() {
     };
   }, [tournaments]);
 
-  const formatDate = (dateStr: string) => {
+  const formatDate = (dateStr: string, isPending: boolean = false) => {
+    if (isPending) return "Aguardando";
     const date = new Date(dateStr);
     return date.toLocaleDateString("pt-BR", {
       day: "2-digit",
@@ -190,7 +200,8 @@ export default function TournamentPage() {
     });
   };
 
-  const formatFullDate = (dateStr: string) => {
+  const formatFullDate = (dateStr: string, isPending: boolean = false) => {
+    if (isPending) return "Aguardando";
     const date = new Date(dateStr);
     return date.toLocaleDateString("pt-BR", {
       day: "2-digit",
@@ -379,7 +390,7 @@ export default function TournamentPage() {
                         <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                           <span className="flex items-center gap-1.5">
                             <Calendar size={14} className="text-primary" />
-                            {formatDate(tournament.start_date)}
+                            {formatDate(tournament.start_date, tournament.start_date_pending)}
                           </span>
                           <span className="flex items-center gap-1.5">
                             <Clock size={14} className="text-primary" />
@@ -388,6 +399,10 @@ export default function TournamentPage() {
                           <span className="flex items-center gap-1.5">
                             <Users size={14} className="text-primary" />
                             {participantCount}/{maxParticipants}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <Gamepad2 size={14} className="text-primary" />
+                            {gameModeNames[tournament.game_mode] || tournament.game_mode}
                           </span>
                         </div>
                       </div>
@@ -429,7 +444,7 @@ export default function TournamentPage() {
                             Data
                           </p>
                           <p className="font-display font-bold text-sm">
-                            {formatFullDate(tournament.start_date)}
+                            {formatFullDate(tournament.start_date, tournament.start_date_pending)}
                           </p>
                         </div>
 
@@ -470,21 +485,19 @@ export default function TournamentPage() {
                           <div className="w-10 h-10 bg-destructive/10 rounded-lg flex items-center justify-center">
                             <Shield className="text-destructive" size={20} />
                           </div>
-                          <h4 className="font-display font-bold text-lg">
-                            Regras do Torneio
-                          </h4>
+                          <h4 className="font-display font-bold">Regras do Torneio</h4>
                         </div>
-
-                        <ul className="space-y-3">
+                        <ul className="space-y-2">
                           {parseRules(tournament.rules).map((rule, index) => (
-                            <li key={index} className="flex items-start gap-3">
+                            <li
+                              key={index}
+                              className="flex items-start gap-2 text-sm text-muted-foreground"
+                            >
                               <AlertTriangle
-                                size={16}
-                                className="text-amber-500 mt-0.5 shrink-0"
+                                size={14}
+                                className="text-destructive shrink-0 mt-0.5"
                               />
-                              <span className="text-muted-foreground text-sm">
-                                {rule}
-                              </span>
+                              <span>{rule}</span>
                             </li>
                           ))}
                         </ul>
@@ -496,19 +509,21 @@ export default function TournamentPage() {
                           <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
                             <Target className="text-primary" size={20} />
                           </div>
-                          <h4 className="font-display font-bold text-lg">
+                          <h4 className="font-display font-bold">
                             Requisitos para Participar
                           </h4>
                         </div>
-
-                        <ul className="space-y-3">
+                        <ul className="space-y-2">
                           {defaultRequirements.map((req, index) => (
-                            <li key={index} className="flex items-start gap-3">
+                            <li
+                              key={index}
+                              className="flex items-start gap-2 text-sm text-muted-foreground"
+                            >
                               <CheckCircle2
-                                size={16}
-                                className="text-primary mt-0.5 shrink-0"
+                                size={14}
+                                className="text-primary shrink-0 mt-0.5"
                               />
-                              <span className="text-muted-foreground text-sm">{req}</span>
+                              <span>{req}</span>
                             </li>
                           ))}
                         </ul>
@@ -516,17 +531,22 @@ export default function TournamentPage() {
 
                       {/* Buy Button */}
                       <Button
-                        variant="default"
                         size="lg"
-                        className="w-full"
+                        className="w-full gap-2"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleBuyTicket(tournament);
                         }}
-                        disabled={tournament.status !== "open"}
+                        disabled={spotsLeft <= 0 || tournament.status !== "open"}
                       >
                         <Ticket size={18} />
-                        {tournament.status === "open" ? "Comprar Ingresso" : "Inscrições em breve"}
+                        {spotsLeft <= 0
+                          ? "Esgotado"
+                          : tournament.status !== "open"
+                          ? "Inscrições Fechadas"
+                          : `Comprar Ingresso - R$ ${Number(
+                              tournament.entry_fee
+                            ).toFixed(2).replace(".", ",")}`}
                       </Button>
                     </div>
                   )}
@@ -535,99 +555,93 @@ export default function TournamentPage() {
             })}
           </div>
 
-          {/* Sidebar - Quick Info */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-6">
-              <div className="bg-card border border-border rounded-xl p-6 space-y-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
-                    <Info className="text-primary" size={24} />
-                  </div>
-                  <div>
-                    <p className="font-display font-bold text-lg">
-                      Como Participar
-                    </p>
-                  </div>
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* How to Participate */}
+            <div className="bg-card border border-border rounded-xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                  <Info className="text-primary" size={20} />
                 </div>
-
-                <ol className="space-y-4 text-sm">
-                  <li className="flex gap-3">
-                    <span className="w-6 h-6 bg-primary/20 text-primary rounded-full flex items-center justify-center font-bold text-xs shrink-0">
-                      1
-                    </span>
-                    <span className="text-muted-foreground">
-                      Selecione um torneio da lista ao lado
-                    </span>
-                  </li>
-                  <li className="flex gap-3">
-                    <span className="w-6 h-6 bg-primary/20 text-primary rounded-full flex items-center justify-center font-bold text-xs shrink-0">
-                      2
-                    </span>
-                    <span className="text-muted-foreground">
-                      Clique em "Comprar Ingresso" e preencha seus dados
-                    </span>
-                  </li>
-                  <li className="flex gap-3">
-                    <span className="w-6 h-6 bg-primary/20 text-primary rounded-full flex items-center justify-center font-bold text-xs shrink-0">
-                      3
-                    </span>
-                    <span className="text-muted-foreground">
-                      Pague via PIX e receba seu token de confirmação
-                    </span>
-                  </li>
-                  <li className="flex gap-3">
-                    <span className="w-6 h-6 bg-primary/20 text-primary rounded-full flex items-center justify-center font-bold text-xs shrink-0">
-                      4
-                    </span>
-                    <span className="text-muted-foreground">
-                      Entre no grupo do WhatsApp e aguarde o dia do torneio
-                    </span>
-                  </li>                  
-                  <li className="flex gap-3">
-                    <span className="w-6 h-6 bg-primary/20 text-primary rounded-full flex items-center justify-center font-bold text-xs shrink-0">
-                      5
-                    </span>
-                    <span className="text-muted-foreground">
-                      Aguarde o envio do ID e Senha da sala no seu WhatsApp
-                    </span>
-                  </li>
-                </ol>
-
-                {/* Prize Distribution Info */}
-                <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Trophy size={14} className="text-primary" />
-                    <span className="font-medium">Distribuição do valor</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Premiação</span>
-                    <span className="text-primary font-bold">70%</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Organização</span>
-                    <span className="font-bold">30%</span>
-                  </div>
-                </div>
-
-                <p className="text-xs text-muted-foreground text-center">
-                  Duplas pagam R$ 5,00 (mesmo preço por pessoa)
-                </p>
+                <h3 className="font-display font-bold">Como Participar</h3>
               </div>
+              <ol className="space-y-3 text-sm text-muted-foreground">
+                <li className="flex items-start gap-3">
+                  <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold shrink-0">
+                    1
+                  </span>
+                  <span>Selecione um torneio da lista</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold shrink-0">
+                    2
+                  </span>
+                  <span>Clique em "Comprar Ingresso"</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold shrink-0">
+                    3
+                  </span>
+                  <span>Preencha seus dados e envie os prints</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold shrink-0">
+                    4
+                  </span>
+                  <span>Pague via PIX e receba seu token</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold shrink-0">
+                    5
+                  </span>
+                  <span>Entre na sala no horário com seu slot</span>
+                </li>
+              </ol>
+            </div>
+
+            {/* Prize Distribution */}
+            <div className="bg-card border border-border rounded-xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-amber-500/10 rounded-lg flex items-center justify-center">
+                  <Trophy className="text-amber-500" size={20} />
+                </div>
+                <h3 className="font-display font-bold">Premiação</h3>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">🥇 1º Lugar</span>
+                  <span className="font-bold text-primary">50%</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">🥈 2º Lugar</span>
+                  <span className="font-bold">30%</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">🥉 3º Lugar</span>
+                  <span className="font-bold">20%</span>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-4 pt-4 border-t border-border">
+                * 70% do valor total arrecadado é destinado à premiação
+              </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Modal */}
-      <TicketPurchaseModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        tournamentName={selectedTournament?.name || ""}
-        tournamentId={selectedTournament?.id}
-        tournamentGame={selectedTournament?.game}
-        tournamentGameMode={selectedTournament?.game_mode}
-        tournamentDate={selectedTournament?.start_date}
-      />
+      {/* Purchase Modal */}
+      {selectedTournament && (
+        <TicketPurchaseModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          tournamentName={selectedTournament.name}
+          tournamentId={selectedTournament.id}
+          tournamentGame={selectedTournament.game}
+          tournamentGameMode={selectedTournament.game_mode}
+          tournamentDate={selectedTournament.start_date}
+          entryFee={Number(selectedTournament.entry_fee)}
+        />
+      )}
     </div>
   );
 }

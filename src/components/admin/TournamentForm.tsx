@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -28,6 +29,8 @@ interface Tournament {
   rules: string;
   start_date: string;
   end_date: string;
+  start_date_pending?: boolean;
+  end_date_pending?: boolean;
   entry_fee: number;
   prize_pool: number;
   max_participants: number;
@@ -65,27 +68,75 @@ const GAME_MODES: { value: GameMode; label: string; players: number }[] = [
   { value: "squad", label: "Squad", players: 4 },
 ];
 
+// Helper to format date to local datetime-local input value
+const formatToLocalDatetime = (isoString: string | null | undefined): string => {
+  if (!isoString) return "";
+  const date = new Date(isoString);
+  // Format as YYYY-MM-DDTHH:mm in local time
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+// Helper to get time only from datetime-local value
+const getTimeFromDatetime = (datetimeValue: string): string => {
+  if (!datetimeValue) return "";
+  const parts = datetimeValue.split("T");
+  return parts[1] || "";
+};
+
+// Helper to get date only from datetime-local value  
+const getDateFromDatetime = (datetimeValue: string): string => {
+  if (!datetimeValue) return "";
+  const parts = datetimeValue.split("T");
+  return parts[0] || "";
+};
+
+// Helper to combine date and time
+const combineDateAndTime = (date: string, time: string): string => {
+  if (!time) return "";
+  if (!date) {
+    // Use a placeholder date for pending dates
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    date = `${year}-${month}-${day}`;
+  }
+  return `${date}T${time}`;
+};
+
 export function TournamentForm({ tournament, onClose, onSuccess }: TournamentFormProps) {
   const isEditing = !!tournament?.id;
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Parse initial values
+  const initialStartDatetime = tournament?.start_date ? formatToLocalDatetime(tournament.start_date) : "";
+  const initialEndDatetime = tournament?.end_date ? formatToLocalDatetime(tournament.end_date) : "";
+  
   const [formData, setFormData] = useState<Tournament>({
     name: tournament?.name || "",
     game: tournament?.game || "freefire",
     game_mode: tournament?.game_mode || "solo",
     description: tournament?.description || "",
     rules: tournament?.rules || "",
-    start_date: tournament?.start_date
-      ? new Date(tournament.start_date).toISOString().slice(0, 16)
-      : "",
-    end_date: tournament?.end_date
-      ? new Date(tournament.end_date).toISOString().slice(0, 16)
-      : "",
+    start_date: initialStartDatetime,
+    end_date: initialEndDatetime,
+    start_date_pending: tournament?.start_date_pending || false,
+    end_date_pending: tournament?.end_date_pending || false,
     entry_fee: tournament?.entry_fee || 0,
     prize_pool: tournament?.prize_pool || 0,
     max_participants: tournament?.max_participants || 100,
     status: tournament?.status || "upcoming",
     banner_url: tournament?.banner_url || "",
   });
+
+  // Separate state for date and time when using "Aguardando"
+  const [startTime, setStartTime] = useState(getTimeFromDatetime(initialStartDatetime));
+  const [endTime, setEndTime] = useState(getTimeFromDatetime(initialEndDatetime));
 
   // Calculate total slots based on game_mode
   const getPlayersPerSlot = () => {
@@ -108,14 +159,28 @@ export function TournamentForm({ tournament, onClose, onSuccess }: TournamentFor
     setIsLoading(true);
 
     try {
+      // Build the start_date and end_date
+      let startDateValue = formData.start_date;
+      let endDateValue = formData.end_date;
+
+      // If pending, we still need a time but use current date as placeholder
+      if (formData.start_date_pending && startTime) {
+        startDateValue = combineDateAndTime("", startTime);
+      }
+      if (formData.end_date_pending && endTime) {
+        endDateValue = combineDateAndTime("", endTime);
+      }
+
       const payload = {
         name: formData.name,
         game: formData.game,
         game_mode: formData.game_mode,
         description: formData.description || null,
         rules: formData.rules || null,
-        start_date: new Date(formData.start_date).toISOString(),
-        end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null,
+        start_date: startDateValue ? new Date(startDateValue).toISOString() : new Date().toISOString(),
+        end_date: endDateValue ? new Date(endDateValue).toISOString() : null,
+        start_date_pending: formData.start_date_pending,
+        end_date_pending: formData.end_date_pending,
         entry_fee: formData.entry_fee,
         prize_pool: formData.prize_pool,
         max_participants: formData.max_participants,
@@ -219,27 +284,78 @@ export function TournamentForm({ tournament, onClose, onSuccess }: TournamentFor
               </p>
             </div>
 
+            {/* Start Date */}
             <div className="space-y-2">
               <Label htmlFor="start_date">Data de Início *</Label>
-              <Input
-                id="start_date"
-                name="start_date"
-                type="datetime-local"
-                value={formData.start_date}
-                onChange={handleChange}
-                required
-              />
+              <div className="flex items-center gap-2 mb-2">
+                <Checkbox
+                  id="start_date_pending"
+                  checked={formData.start_date_pending}
+                  onCheckedChange={(checked) =>
+                    setFormData((prev) => ({ ...prev, start_date_pending: !!checked }))
+                  }
+                />
+                <Label htmlFor="start_date_pending" className="text-sm cursor-pointer">
+                  Aguardando (data a definir)
+                </Label>
+              </div>
+              {formData.start_date_pending ? (
+                <div className="space-y-2">
+                  <Label htmlFor="start_time" className="text-xs text-muted-foreground">Horário de Início</Label>
+                  <Input
+                    id="start_time"
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    required
+                  />
+                </div>
+              ) : (
+                <Input
+                  id="start_date"
+                  name="start_date"
+                  type="datetime-local"
+                  value={formData.start_date}
+                  onChange={handleChange}
+                  required
+                />
+              )}
             </div>
 
+            {/* End Date */}
             <div className="space-y-2">
               <Label htmlFor="end_date">Data de Término</Label>
-              <Input
-                id="end_date"
-                name="end_date"
-                type="datetime-local"
-                value={formData.end_date}
-                onChange={handleChange}
-              />
+              <div className="flex items-center gap-2 mb-2">
+                <Checkbox
+                  id="end_date_pending"
+                  checked={formData.end_date_pending}
+                  onCheckedChange={(checked) =>
+                    setFormData((prev) => ({ ...prev, end_date_pending: !!checked }))
+                  }
+                />
+                <Label htmlFor="end_date_pending" className="text-sm cursor-pointer">
+                  Aguardando (data a definir)
+                </Label>
+              </div>
+              {formData.end_date_pending ? (
+                <div className="space-y-2">
+                  <Label htmlFor="end_time" className="text-xs text-muted-foreground">Horário de Término</Label>
+                  <Input
+                    id="end_time"
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                  />
+                </div>
+              ) : (
+                <Input
+                  id="end_date"
+                  name="end_date"
+                  type="datetime-local"
+                  value={formData.end_date}
+                  onChange={handleChange}
+                />
+              )}
             </div>
 
             <div className="space-y-2">
