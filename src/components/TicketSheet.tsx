@@ -254,10 +254,13 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
               ` : ''}
             </div>
             <div class="footer">
-              <strong>Instruções:</strong><br/>
-              1. Use o <strong>Token</strong> para validar sua participação<br/>
-              ${ticket.slotNumber ? `2. Entre na sala do jogo e aguarde no <strong>Slot #${ticket.slotNumber}</strong><br/>
-              3. Use o mesmo número de Slot no Discord para call (opcional)` : ''}
+              <strong>📋 Como usar seu ingresso:</strong><br/><br/>
+              1. Acesse o menu <strong>"Entrar na Play"</strong> no painel lateral<br/>
+              2. Digite o <strong>Token</strong> acima para visualizar o ID e Senha da sala<br/>
+              ${ticket.slotNumber ? `3. Entre na sala do jogo usando seu <strong>Slot #${ticket.slotNumber}</strong><br/>
+              4. Use o mesmo número de Slot no Discord para a call (opcional)<br/><br/>
+              <em>⚠️ Se a sala ainda não estiver disponível, aguarde a configuração pelo administrador.</em>` : `3. Aguarde a atribuição do seu slot após a configuração da sala<br/><br/>
+              <em>⚠️ Se a sala ainda não estiver disponível, aguarde a configuração pelo administrador.</em>`}
             </div>
           </div>
         </body>
@@ -470,16 +473,22 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
 
           {/* Instructions */}
           <div className="bg-muted/30 border border-border rounded-lg p-4">
-            <p className="text-sm font-medium mb-2">📋 Instruções:</p>
-            <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• Use o <strong className="text-foreground">Token</strong> para validar sua participação</li>
-              {ticket.slotNumber && (
+            <p className="text-sm font-medium mb-2">📋 Como usar seu ingresso:</p>
+            <ul className="text-sm text-muted-foreground space-y-1.5">
+              <li>1. Acesse o menu <strong className="text-foreground">"Entrar na Play"</strong> no painel lateral</li>
+              <li>2. Digite o <strong className="text-foreground">Token</strong> acima para ver ID e Senha da sala</li>
+              {ticket.slotNumber ? (
                 <>
-                  <li>• Entre na sala do jogo e aguarde no <strong className="text-foreground">Slot #{ticket.slotNumber}</strong></li>
-                  <li>• Use o mesmo número de Slot no Discord para call (opcional)</li>
+                  <li>3. Entre na sala do jogo usando seu <strong className="text-foreground">Slot #{ticket.slotNumber}</strong></li>
+                  <li>4. Use o mesmo número de Slot no Discord para a call (opcional)</li>
                 </>
+              ) : (
+                <li>3. Aguarde a atribuição do seu slot após a configuração da sala</li>
               )}
             </ul>
+            <p className="text-xs text-muted-foreground mt-3 italic">
+              ⚠️ Se a sala ainda não estiver disponível, aguarde a configuração pelo administrador.
+            </p>
           </div>
         </div>
 
