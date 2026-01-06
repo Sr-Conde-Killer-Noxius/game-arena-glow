@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, RefreshCw, Check, X, Eye, ExternalLink } from "lucide-react";
+import { Search, RefreshCw, Check, X, Eye, ExternalLink, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -107,6 +107,24 @@ export function TicketsTab() {
     } catch (err) {
       console.error("Error rejecting payment:", err);
       toast.error("Erro ao rejeitar pagamento");
+    }
+  };
+
+  const deleteParticipation = async (participationId: string) => {
+    if (!confirm("Tem certeza que deseja DELETAR este ingresso permanentemente? Esta ação não pode ser desfeita.")) return;
+
+    try {
+      const { error } = await supabase
+        .from("participations")
+        .delete()
+        .eq("id", participationId);
+
+      if (error) throw error;
+      toast.success("Ingresso deletado com sucesso");
+      fetchParticipations();
+    } catch (err) {
+      console.error("Error deleting participation:", err);
+      toast.error("Erro ao deletar ingresso");
     }
   };
 
@@ -266,28 +284,39 @@ export function TicketsTab() {
                         {formatDate(p.created_at)}
                       </td>
                       <td className="p-4">
-                        {p.payment_status === "pending" && (
-                          <div className="flex gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-primary hover:bg-primary/10"
-                              onClick={() => confirmPayment(p.id)}
-                              title="Aprovar"
-                            >
-                              <Check size={16} />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                              onClick={() => rejectPayment(p.id)}
-                              title="Rejeitar"
-                            >
-                              <X size={16} />
-                            </Button>
-                          </div>
-                        )}
+                        <div className="flex gap-2">
+                          {p.payment_status === "pending" && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-primary hover:bg-primary/10"
+                                onClick={() => confirmPayment(p.id)}
+                                title="Aprovar"
+                              >
+                                <Check size={16} />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                onClick={() => rejectPayment(p.id)}
+                                title="Rejeitar"
+                              >
+                                <X size={16} />
+                              </Button>
+                            </>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                            onClick={() => deleteParticipation(p.id)}
+                            title="Deletar permanentemente"
+                          >
+                            <Trash2 size={16} />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   );
