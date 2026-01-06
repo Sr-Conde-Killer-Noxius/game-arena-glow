@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   Ticket,
   Shield,
+  Play,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ interface SidebarProps {
 const menuItems = [
   { icon: Gamepad2, label: "Jogos", path: "/dashboard", active: true },
   { icon: Ticket, label: "Meus Ingressos", path: "/my-tickets", active: true },
+  { icon: Play, label: "Entrar na Play", path: "/entrar-na-play", active: true },
   { icon: User, label: "Perfil", path: "/profile", active: true },
   { icon: Shield, label: "Admin", path: "/admin", active: true, adminOnly: true },
   { icon: Trophy, label: "Cups - Liga", path: "/tournaments", active: false },

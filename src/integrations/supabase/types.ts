@@ -267,6 +267,9 @@ export type Database = {
           max_participants: number | null
           name: string
           prize_pool: number
+          room_id: string | null
+          room_password: string | null
+          room_pending: boolean
           rules: string | null
           start_date: string
           start_date_pending: boolean
@@ -286,6 +289,9 @@ export type Database = {
           max_participants?: number | null
           name: string
           prize_pool?: number
+          room_id?: string | null
+          room_password?: string | null
+          room_pending?: boolean
           rules?: string | null
           start_date: string
           start_date_pending?: boolean
@@ -305,6 +311,9 @@ export type Database = {
           max_participants?: number | null
           name?: string
           prize_pool?: number
+          room_id?: string | null
+          room_password?: string | null
+          room_pending?: boolean
           rules?: string | null
           start_date?: string
           start_date_pending?: boolean
