@@ -12,6 +12,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import DashboardPage from "./pages/DashboardPage";
 import TournamentPage from "./pages/TournamentPage";
 import MyTicketsPage from "./pages/MyTicketsPage";
+import EntrarNaPlayPage from "./pages/EntrarNaPlayPage";
 import ProfilePage from "./pages/ProfilePage";
 import AdminPage from "./pages/AdminPage";
 import { DashboardLayout } from "./components/DashboardLayout";
@@ -41,6 +42,7 @@ const App = () => (
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/tournament/:gameId" element={<TournamentPage />} />
               <Route path="/my-tickets" element={<MyTicketsPage />} />
+              <Route path="/entrar-na-play" element={<EntrarNaPlayPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/admin" element={<AdminPage />} />
             </Route>

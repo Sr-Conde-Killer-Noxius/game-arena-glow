@@ -36,6 +36,9 @@ interface Tournament {
   max_participants: number;
   status: TournamentStatus;
   banner_url: string;
+  room_id?: string;
+  room_password?: string;
+  room_pending?: boolean;
 }
 
 interface TournamentFormProps {
@@ -132,6 +135,9 @@ export function TournamentForm({ tournament, onClose, onSuccess }: TournamentFor
     max_participants: tournament?.max_participants || 100,
     status: tournament?.status || "upcoming",
     banner_url: tournament?.banner_url || "",
+    room_id: tournament?.room_id || "",
+    room_password: tournament?.room_password || "",
+    room_pending: tournament?.room_pending ?? true,
   });
 
   // Separate state for date and time when using "Aguardando"
@@ -186,6 +192,9 @@ export function TournamentForm({ tournament, onClose, onSuccess }: TournamentFor
         max_participants: formData.max_participants,
         status: formData.status,
         banner_url: formData.banner_url || null,
+        room_id: formData.room_id || null,
+        room_password: formData.room_password || null,
+        room_pending: formData.room_pending,
       };
 
       if (isEditing && tournament?.id) {
@@ -453,6 +462,49 @@ export function TournamentForm({ tournament, onClose, onSuccess }: TournamentFor
               placeholder="Regras do torneio..."
               rows={4}
             />
+          </div>
+
+          {/* Room Configuration Section */}
+          <div className="space-y-4 p-4 border border-border rounded-lg bg-muted/30">
+            <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
+              Configuração da Sala (Entrar na Play)
+            </h3>
+            <div className="flex items-center gap-2 mb-2">
+              <Checkbox
+                id="room_pending"
+                checked={formData.room_pending}
+                onCheckedChange={(checked) =>
+                  setFormData((prev) => ({ ...prev, room_pending: !!checked }))
+                }
+              />
+              <Label htmlFor="room_pending" className="text-sm cursor-pointer">
+                Sala pendente (usuários verão "Aguardando")
+              </Label>
+            </div>
+            {!formData.room_pending && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="room_id">ID da Sala</Label>
+                  <Input
+                    id="room_id"
+                    name="room_id"
+                    value={formData.room_id}
+                    onChange={handleChange}
+                    placeholder="Ex: 123456"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="room_password">Senha da Sala</Label>
+                  <Input
+                    id="room_password"
+                    name="room_password"
+                    value={formData.room_password}
+                    onChange={handleChange}
+                    placeholder="Ex: abc123"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
