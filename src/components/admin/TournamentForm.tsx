@@ -116,9 +116,11 @@ export function TournamentForm({ tournament, onClose, onSuccess }: TournamentFor
   const isEditing = !!tournament?.id;
   const [isLoading, setIsLoading] = useState(false);
   
-  // Parse initial values
+  // Parse initial values - get time from saved dates
   const initialStartDatetime = tournament?.start_date ? formatToLocalDatetime(tournament.start_date) : "";
   const initialEndDatetime = tournament?.end_date ? formatToLocalDatetime(tournament.end_date) : "";
+  const initialStartTime = getTimeFromDatetime(initialStartDatetime);
+  const initialEndTime = getTimeFromDatetime(initialEndDatetime);
   
   const [formData, setFormData] = useState<Tournament>({
     name: tournament?.name || "",
@@ -128,11 +130,11 @@ export function TournamentForm({ tournament, onClose, onSuccess }: TournamentFor
     rules: tournament?.rules || "",
     start_date: initialStartDatetime,
     end_date: initialEndDatetime,
-    start_date_pending: tournament?.start_date_pending || false,
-    end_date_pending: tournament?.end_date_pending || false,
-    entry_fee: tournament?.entry_fee || 0,
-    prize_pool: tournament?.prize_pool || 0,
-    max_participants: tournament?.max_participants || 100,
+    start_date_pending: tournament?.start_date_pending ?? false,
+    end_date_pending: tournament?.end_date_pending ?? false,
+    entry_fee: tournament?.entry_fee ?? 0,
+    prize_pool: tournament?.prize_pool ?? 0,
+    max_participants: tournament?.max_participants ?? 100,
     status: tournament?.status || "upcoming",
     banner_url: tournament?.banner_url || "",
     room_id: tournament?.room_id || "",
@@ -141,8 +143,9 @@ export function TournamentForm({ tournament, onClose, onSuccess }: TournamentFor
   });
 
   // Separate state for date and time when using "Aguardando"
-  const [startTime, setStartTime] = useState(getTimeFromDatetime(initialStartDatetime));
-  const [endTime, setEndTime] = useState(getTimeFromDatetime(initialEndDatetime));
+  // Use the saved time from the tournament when editing
+  const [startTime, setStartTime] = useState(initialStartTime);
+  const [endTime, setEndTime] = useState(initialEndTime);
 
   // Calculate total slots based on game_mode
   const getPlayersPerSlot = () => {
