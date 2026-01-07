@@ -143,11 +143,6 @@ export default function EntrarNaPlayPage() {
         <Card className="border-primary/30 bg-primary/5">
           <CardHeader>
             <CardTitle className="text-primary">{roomInfo.tournamentName}</CardTitle>
-            {roomInfo.slotNumber && (
-              <CardDescription>
-                Seu slot: <span className="font-bold text-foreground">#{roomInfo.slotNumber}</span>
-              </CardDescription>
-            )}
           </CardHeader>
           <CardContent>
             {roomInfo.roomPending ? (
@@ -162,10 +157,32 @@ export default function EntrarNaPlayPage() {
                     <br />
                     Por favor, aguarde e verifique novamente em breve.
                   </p>
+                  {roomInfo.slotNumber && (
+                    <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                      <p className="text-sm text-muted-foreground mb-1">Seu Slot</p>
+                      <p className="text-2xl font-bold text-amber-500">#{roomInfo.slotNumber}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
               <div className="space-y-4">
+                {/* Slot */}
+                {roomInfo.slotNumber && (
+                  <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-center">
+                    <div className="flex items-center justify-center gap-2 text-muted-foreground mb-1">
+                      <Ticket className="w-4 h-4 text-amber-500" />
+                      <span className="text-sm">Seu Slot</span>
+                    </div>
+                    <p className="text-3xl font-bold text-amber-500">
+                      #{roomInfo.slotNumber}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Use este número ao entrar na sala e no Discord
+                    </p>
+                  </div>
+                )}
+                
                 <div className="p-4 rounded-lg bg-background border">
                   <div className="flex items-center gap-2 text-muted-foreground mb-1">
                     <Key className="w-4 h-4" />
