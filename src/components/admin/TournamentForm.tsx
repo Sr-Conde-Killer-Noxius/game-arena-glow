@@ -20,8 +20,8 @@ type GameType = Database["public"]["Enums"]["game_type"];
 type TournamentStatus = Database["public"]["Enums"]["tournament_status"];
 type GameMode = "solo" | "dupla" | "trio" | "squad";
 
-interface Tournament {
-  id?: string;
+// Internal form state type
+interface TournamentFormState {
   name: string;
   game: GameType;
   game_mode: GameMode;
@@ -29,20 +29,20 @@ interface Tournament {
   rules: string;
   start_date: string;
   end_date: string;
-  start_date_pending?: boolean;
-  end_date_pending?: boolean;
+  start_date_pending: boolean;
+  end_date_pending: boolean;
   entry_fee: number;
   prize_pool: number;
   max_participants: number;
   status: TournamentStatus;
   banner_url: string;
-  room_id?: string;
-  room_password?: string;
-  room_pending?: boolean;
+  room_id: string;
+  room_password: string;
+  room_pending: boolean;
 }
 
 interface TournamentFormProps {
-  tournament?: Tournament;
+  tournamentId?: string; // Pass only the ID, form fetches the data
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -75,7 +75,6 @@ const GAME_MODES: { value: GameMode; label: string; players: number }[] = [
 const formatToLocalDatetime = (isoString: string | null | undefined): string => {
   if (!isoString) return "";
   const date = new Date(isoString);
-  // Format as YYYY-MM-DDTHH:mm in local time
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
@@ -91,18 +90,10 @@ const getTimeFromDatetime = (datetimeValue: string): string => {
   return parts[1] || "";
 };
 
-// Helper to get date only from datetime-local value  
-const getDateFromDatetime = (datetimeValue: string): string => {
-  if (!datetimeValue) return "";
-  const parts = datetimeValue.split("T");
-  return parts[0] || "";
-};
-
 // Helper to combine date and time
 const combineDateAndTime = (date: string, time: string): string => {
   if (!time) return "";
   if (!date) {
-    // Use a placeholder date for pending dates
     const today = new Date();
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, "0");
@@ -112,40 +103,92 @@ const combineDateAndTime = (date: string, time: string): string => {
   return `${date}T${time}`;
 };
 
-export function TournamentForm({ tournament, onClose, onSuccess }: TournamentFormProps) {
-  const isEditing = !!tournament?.id;
-  const [isLoading, setIsLoading] = useState(false);
-  
-  // Parse initial values - get time from saved dates
-  const initialStartDatetime = tournament?.start_date ? formatToLocalDatetime(tournament.start_date) : "";
-  const initialEndDatetime = tournament?.end_date ? formatToLocalDatetime(tournament.end_date) : "";
-  const initialStartTime = getTimeFromDatetime(initialStartDatetime);
-  const initialEndTime = getTimeFromDatetime(initialEndDatetime);
-  
-  const [formData, setFormData] = useState<Tournament>({
-    name: tournament?.name || "",
-    game: tournament?.game || "freefire",
-    game_mode: tournament?.game_mode || "solo",
-    description: tournament?.description || "",
-    rules: tournament?.rules || "",
-    start_date: initialStartDatetime,
-    end_date: initialEndDatetime,
-    start_date_pending: tournament?.start_date_pending ?? false,
-    end_date_pending: tournament?.end_date_pending ?? false,
-    entry_fee: tournament?.entry_fee ?? 0,
-    prize_pool: tournament?.prize_pool ?? 0,
-    max_participants: tournament?.max_participants ?? 100,
-    status: tournament?.status || "upcoming",
-    banner_url: tournament?.banner_url || "",
-    room_id: tournament?.room_id || "",
-    room_password: tournament?.room_password || "",
-    room_pending: tournament?.room_pending ?? true,
-  });
+// Default form state for new tournaments
+const getDefaultFormState = (): TournamentFormState => ({
+  name: "",
+  game: "freefire",
+  game_mode: "solo",
+  description: "",
+  rules: "",
+  start_date: "",
+  end_date: "",
+  start_date_pending: false,
+  end_date_pending: false,
+  entry_fee: 0,
+  prize_pool: 0,
+  max_participants: 100,
+  status: "upcoming",
+  banner_url: "",
+  room_id: "",
+  room_password: "",
+  room_pending: true,
+});
 
-  // Separate state for date and time when using "Aguardando"
-  // Use the saved time from the tournament when editing
-  const [startTime, setStartTime] = useState(initialStartTime);
-  const [endTime, setEndTime] = useState(initialEndTime);
+export function TournamentForm({ tournamentId, onClose, onSuccess }: TournamentFormProps) {
+  const isEditing = !!tournamentId;
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [formData, setFormData] = useState<TournamentFormState>(getDefaultFormState());
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+
+  // Fetch tournament data from database when editing
+  useEffect(() => {
+    if (!tournamentId) return;
+
+    const fetchTournament = async () => {
+      setIsFetching(true);
+      try {
+        const { data, error } = await supabase
+          .from("tournaments")
+          .select("*")
+          .eq("id", tournamentId)
+          .maybeSingle();
+
+        if (error) throw error;
+        if (!data) {
+          toast.error("Torneio não encontrado");
+          onClose();
+          return;
+        }
+
+        // Map database data to form state
+        const startDatetime = formatToLocalDatetime(data.start_date);
+        const endDatetime = formatToLocalDatetime(data.end_date);
+
+        setFormData({
+          name: data.name,
+          game: data.game,
+          game_mode: data.game_mode as GameMode,
+          description: data.description || "",
+          rules: data.rules || "",
+          start_date: startDatetime,
+          end_date: endDatetime,
+          start_date_pending: data.start_date_pending,
+          end_date_pending: data.end_date_pending,
+          entry_fee: Number(data.entry_fee),
+          prize_pool: Number(data.prize_pool),
+          max_participants: data.max_participants ?? 100,
+          status: data.status,
+          banner_url: data.banner_url || "",
+          room_id: data.room_id || "",
+          room_password: data.room_password || "",
+          room_pending: data.room_pending,
+        });
+
+        // Set time states from the fetched dates
+        setStartTime(getTimeFromDatetime(startDatetime));
+        setEndTime(getTimeFromDatetime(endDatetime));
+      } catch (err) {
+        console.error("Error fetching tournament:", err);
+        toast.error("Erro ao carregar dados do torneio");
+      } finally {
+        setIsFetching(false);
+      }
+    };
+
+    fetchTournament();
+  }, [tournamentId, onClose]);
 
   // Calculate total slots based on game_mode
   const getPlayersPerSlot = () => {
@@ -200,11 +243,11 @@ export function TournamentForm({ tournament, onClose, onSuccess }: TournamentFor
         room_pending: formData.room_pending,
       };
 
-      if (isEditing && tournament?.id) {
+      if (isEditing && tournamentId) {
         const { error } = await supabase
           .from("tournaments")
           .update(payload)
-          .eq("id", tournament.id);
+          .eq("id", tournamentId);
 
         if (error) throw error;
         toast.success("Torneio atualizado com sucesso!");
@@ -224,6 +267,19 @@ export function TournamentForm({ tournament, onClose, onSuccess }: TournamentFor
       setIsLoading(false);
     }
   };
+
+  if (isFetching) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+        <div className="bg-card border border-border rounded-xl p-12">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+            <p className="text-muted-foreground">Carregando dados do torneio...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">

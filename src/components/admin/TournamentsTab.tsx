@@ -10,20 +10,8 @@ import type { Database } from "@/integrations/supabase/types";
 type GameType = Database["public"]["Enums"]["game_type"];
 type TournamentStatus = Database["public"]["Enums"]["tournament_status"];
 
-interface Tournament {
-  id: string;
-  name: string;
-  game: GameType;
-  description: string | null;
-  rules: string | null;
-  start_date: string;
-  end_date: string | null;
-  entry_fee: number;
-  prize_pool: number;
-  max_participants: number | null;
-  status: TournamentStatus;
-  banner_url: string | null;
-}
+// Use the full database type to ensure all fields are included
+type Tournament = Database["public"]["Tables"]["tournaments"]["Row"];
 
 export function TournamentsTab() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
@@ -198,21 +186,7 @@ export function TournamentsTab() {
 
       {showForm && (
         <TournamentForm
-          tournament={editingTournament ? {
-            id: editingTournament.id,
-            name: editingTournament.name,
-            game: editingTournament.game,
-            game_mode: ((editingTournament as { game_mode?: string }).game_mode || "solo") as "solo" | "dupla" | "trio" | "squad",
-            description: editingTournament.description || "",
-            rules: editingTournament.rules || "",
-            start_date: editingTournament.start_date,
-            end_date: editingTournament.end_date || "",
-            entry_fee: editingTournament.entry_fee,
-            prize_pool: editingTournament.prize_pool,
-            max_participants: editingTournament.max_participants || 100,
-            status: editingTournament.status,
-            banner_url: editingTournament.banner_url || "",
-          } : undefined}
+          tournamentId={editingTournament?.id}
           onClose={() => {
             setShowForm(false);
             setEditingTournament(null);
