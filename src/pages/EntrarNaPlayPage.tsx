@@ -39,7 +39,7 @@ export default function EntrarNaPlayPage() {
       // First, find the participation by unique_token
       const { data: participation, error: partError } = await supabase
         .from("participations")
-        .select("tournament_id, payment_status, slot_number")
+        .select("id, tournament_id, payment_status, slot_number")
         .eq("unique_token", ticketToken.trim())
         .maybeSingle();
 
@@ -57,6 +57,26 @@ export default function EntrarNaPlayPage() {
         return;
       }
 
+      let slotNumber = participation.slot_number;
+
+      // Auto-repair: If paid but no slot, call check-payment-status to repair
+      if (slotNumber == null) {
+        console.log("Slot missing for paid ticket, attempting repair...");
+        try {
+          const { data: repairData, error: repairError } = await supabase.functions.invoke(
+            "check-payment-status",
+            { body: { participationId: participation.id } }
+          );
+          
+          if (!repairError && repairData?.slotNumber != null) {
+            slotNumber = repairData.slotNumber;
+            console.log("Slot repaired:", slotNumber);
+          }
+        } catch (repairErr) {
+          console.error("Error repairing slot:", repairErr);
+        }
+      }
+
       // Get tournament room info
       const { data: tournament, error: tournError } = await supabase
         .from("tournaments")
@@ -71,7 +91,7 @@ export default function EntrarNaPlayPage() {
         roomId: tournament.room_id,
         roomPassword: tournament.room_password,
         roomPending: tournament.room_pending,
-        slotNumber: participation.slot_number,
+        slotNumber: slotNumber,
       });
     } catch (err) {
       console.error("Error checking ticket:", err);

@@ -37,33 +37,120 @@ async function getNextSlot(
   const playersPerSlot = getPlayersPerSlot(gameMode);
   const totalSlots = Math.floor(maxParticipants / playersPerSlot);
   
-  // Get all used slots for this tournament
+  console.log(`[getNextSlot] tournamentId=${tournamentId}, gameMode=${gameMode}, maxParticipants=${maxParticipants}, totalSlots=${totalSlots}`);
+  
+  // Get all used slots for this tournament (paid participants with a slot assigned)
   const { data: usedSlots, error } = await supabaseClient
     .from("participations")
     .select("slot_number")
     .eq("tournament_id", tournamentId)
-    .eq("payment_status", "paid")
-    .not("slot_number", "is", null);
+    .eq("payment_status", "paid");
 
   if (error) {
-    console.error("Error fetching used slots:", error);
+    console.error("[getNextSlot] Error fetching used slots:", error);
     return null;
   }
 
-  const usedSlotNumbers = new Set(
-    (usedSlots || []).map((p: { slot_number: number | null }) => p.slot_number)
-  );
+  // Filter out null slots in JS to avoid query issues
+  const usedSlotNumbers = new Set<number>();
+  (usedSlots || []).forEach((p: { slot_number: number | null }) => {
+    if (p.slot_number != null) {
+      usedSlotNumbers.add(p.slot_number);
+    }
+  });
+  
+  console.log(`[getNextSlot] usedSlotNumbers:`, Array.from(usedSlotNumbers));
   
   // Find the first available slot
   for (let slot = 1; slot <= totalSlots; slot++) {
     if (!usedSlotNumbers.has(slot)) {
+      console.log(`[getNextSlot] Found available slot: ${slot}`);
       return slot;
     }
   }
   
   // All slots are taken
-  console.log("All slots are taken for tournament:", tournamentId);
+  console.log(`[getNextSlot] All ${totalSlots} slots are taken for tournament: ${tournamentId}`);
   return null;
+}
+
+// Ensure slot and token are assigned for a paid participation
+// deno-lint-ignore no-explicit-any
+async function ensureSlotAndToken(
+  supabaseClient: any,
+  participationId: string,
+  currentToken: string | null,
+  currentSlot: number | null,
+  tournamentId: string
+): Promise<{ token: string; slotNumber: number | null }> {
+  let token = currentToken;
+  let slotNumber = currentSlot;
+  
+  // Check if we need to generate token or slot
+  const needsToken = !token || token === "";
+  const needsSlot = slotNumber === null || slotNumber === undefined;
+  
+  if (!needsToken && !needsSlot) {
+    console.log(`[ensureSlotAndToken] Already has token and slot. No action needed.`);
+    return { token: token!, slotNumber };
+  }
+  
+  console.log(`[ensureSlotAndToken] Needs repair - needsToken=${needsToken}, needsSlot=${needsSlot}`);
+  
+  // Get tournament details for slot calculation
+  const { data: tournament, error: tournamentError } = await supabaseClient
+    .from("tournaments")
+    .select("game_mode, max_participants")
+    .eq("id", tournamentId)
+    .single();
+
+  if (tournamentError) {
+    console.error("[ensureSlotAndToken] Error fetching tournament:", tournamentError);
+  }
+
+  // Prepare update object
+  const updateData: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+
+  // Generate token if needed
+  if (needsToken) {
+    token = generateUniqueToken();
+    updateData.unique_token = token;
+    console.log(`[ensureSlotAndToken] Generated new token: ${token}`);
+  }
+
+  // Calculate slot if needed
+  if (needsSlot && tournament) {
+    slotNumber = await getNextSlot(
+      supabaseClient,
+      tournamentId,
+      tournament.game_mode || "solo",
+      tournament.max_participants || 100
+    );
+    if (slotNumber !== null) {
+      updateData.slot_number = slotNumber;
+      console.log(`[ensureSlotAndToken] Assigned slot: ${slotNumber}`);
+    } else {
+      console.log(`[ensureSlotAndToken] No slot available!`);
+    }
+  }
+
+  // Only update if we have something to update
+  if (Object.keys(updateData).length > 1) { // more than just updated_at
+    const { error: updateError } = await supabaseClient
+      .from("participations")
+      .update(updateData)
+      .eq("id", participationId);
+
+    if (updateError) {
+      console.error("[ensureSlotAndToken] Error updating participation:", updateError);
+    } else {
+      console.log(`[ensureSlotAndToken] Participation updated successfully`);
+    }
+  }
+
+  return { token: token || "", slotNumber };
 }
 
 serve(async (req) => {
@@ -79,7 +166,8 @@ serve(async (req) => {
     );
 
     const { participationId } = await req.json();
-    console.log("Checking payment status for participation:", participationId);
+    console.log("=== check-payment-status called ===");
+    console.log("participationId:", participationId);
 
     // Fetch participation from database
     const { data: participation, error } = await supabaseClient
@@ -93,15 +181,25 @@ serve(async (req) => {
       throw new Error("Participation not found");
     }
 
-    console.log("Current payment status:", participation.payment_status);
+    console.log("Current status:", participation.payment_status);
+    console.log("Current token:", participation.unique_token);
+    console.log("Current slot:", participation.slot_number);
 
-    // If already paid, return immediately
+    // If already paid, check if slot/token need repair, then return
     if (participation.payment_status === "paid") {
+      const { token, slotNumber } = await ensureSlotAndToken(
+        supabaseClient,
+        participationId,
+        participation.unique_token,
+        participation.slot_number,
+        participation.tournament_id
+      );
+      
       return new Response(
         JSON.stringify({
-          status: participation.payment_status,
-          token: participation.unique_token,
-          slotNumber: participation.slot_number,
+          status: "paid",
+          token,
+          slotNumber,
           isPaid: true,
         }),
         {
@@ -153,7 +251,7 @@ serve(async (req) => {
                 slotNumber = await getNextSlot(
                   supabaseClient,
                   participation.tournament_id,
-                  tournament.game_mode,
+                  tournament.game_mode || "solo",
                   tournament.max_participants || 100
                 );
                 console.log("Assigned slot number:", slotNumber);
