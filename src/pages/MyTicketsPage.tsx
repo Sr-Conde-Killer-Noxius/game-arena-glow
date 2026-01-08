@@ -77,6 +77,22 @@ export default function MyTicketsPage() {
   const [selectedTicket, setSelectedTicket] = useState<Participation | null>(null);
   const [isTicketSheetOpen, setIsTicketSheetOpen] = useState(false);
 
+  const repairTicketSlot = async (ticketId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("check-payment-status", {
+        body: { participationId: ticketId },
+      });
+      if (error) {
+        console.error("Error repairing slot:", error);
+        return null;
+      }
+      return data;
+    } catch (err) {
+      console.error("Error calling check-payment-status:", err);
+      return null;
+    }
+  };
+
   const fetchTickets = async () => {
     setIsLoading(true);
     try {
@@ -111,11 +127,42 @@ export default function MyTicketsPage() {
         return;
       }
 
-      setTickets(data || []);
+      let ticketsData = data || [];
+
+      // Auto-repair: For paid tickets without slot, call check-payment-status
+      const ticketsNeedingRepair = ticketsData.filter(
+        t => t.payment_status === "paid" && t.slot_number == null
+      );
+
+      if (ticketsNeedingRepair.length > 0) {
+        console.log(`Found ${ticketsNeedingRepair.length} tickets needing slot repair`);
+        
+        // Repair in parallel
+        const repairResults = await Promise.all(
+          ticketsNeedingRepair.map(t => repairTicketSlot(t.id))
+        );
+
+        // Update local data with repaired slots
+        repairResults.forEach((result, index) => {
+          if (result?.slotNumber != null) {
+            const ticketId = ticketsNeedingRepair[index].id;
+            const ticketIndex = ticketsData.findIndex(t => t.id === ticketId);
+            if (ticketIndex !== -1) {
+              ticketsData[ticketIndex] = {
+                ...ticketsData[ticketIndex],
+                slot_number: result.slotNumber,
+                unique_token: result.token || ticketsData[ticketIndex].unique_token
+              };
+            }
+          }
+        });
+      }
+
+      setTickets(ticketsData);
 
       // Fetch tournament details for each participation
-      if (data && data.length > 0) {
-        const tournamentIds = [...new Set(data.map(t => t.tournament_id))];
+      if (ticketsData.length > 0) {
+        const tournamentIds = [...new Set(ticketsData.map(t => t.tournament_id))];
         const { data: tournamentsData } = await supabase
           .from("tournaments")
           .select("id, name, game, game_mode, start_date")

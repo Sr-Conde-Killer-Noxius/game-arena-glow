@@ -38,32 +38,40 @@ async function getNextSlot(
   const playersPerSlot = getPlayersPerSlot(gameMode);
   const totalSlots = Math.floor(maxParticipants / playersPerSlot);
   
-  // Get all used slots for this tournament
+  console.log(`[getNextSlot] tournamentId=${tournamentId}, gameMode=${gameMode}, maxParticipants=${maxParticipants}, totalSlots=${totalSlots}`);
+  
+  // Get all used slots for this tournament (paid participants)
   const { data: usedSlots, error } = await supabaseClient
     .from("participations")
     .select("slot_number")
     .eq("tournament_id", tournamentId)
-    .eq("payment_status", "paid")
-    .not("slot_number", "is", null);
+    .eq("payment_status", "paid");
 
   if (error) {
-    console.error("Error fetching used slots:", error);
+    console.error("[getNextSlot] Error fetching used slots:", error);
     return null;
   }
 
-  const usedSlotNumbers = new Set(
-    (usedSlots || []).map((p: { slot_number: number | null }) => p.slot_number)
-  );
+  // Filter out null slots in JS to avoid query issues
+  const usedSlotNumbers = new Set<number>();
+  (usedSlots || []).forEach((p: { slot_number: number | null }) => {
+    if (p.slot_number != null) {
+      usedSlotNumbers.add(p.slot_number);
+    }
+  });
+  
+  console.log(`[getNextSlot] usedSlotNumbers:`, Array.from(usedSlotNumbers));
   
   // Find the first available slot
   for (let slot = 1; slot <= totalSlots; slot++) {
     if (!usedSlotNumbers.has(slot)) {
+      console.log(`[getNextSlot] Found available slot: ${slot}`);
       return slot;
     }
   }
   
   // All slots are taken
-  console.log("All slots are taken for tournament:", tournamentId);
+  console.log(`[getNextSlot] All ${totalSlots} slots are taken for tournament: ${tournamentId}`);
   return null;
 }
 
@@ -319,7 +327,7 @@ serve(async (req) => {
         .from("participations")
         .select("id")
         .eq("mercado_pago_payment_id", paymentId.toString())
-        .single();
+        .maybeSingle();
 
       if (findError || !foundParticipation) {
         console.log("Participation not found by payment_id either");
@@ -365,46 +373,56 @@ serve(async (req) => {
     };
 
     if (newStatus === "paid") {
-      updateData.unique_token = generateUniqueToken();
-      console.log("Generated token:", updateData.unique_token);
-
-      // Get tournament info to calculate slot
-      const { data: participation, error: partError } = await supabaseClient
+      // First, check current participation state to avoid overwriting existing data
+      const { data: currentPart, error: currentError } = await supabaseClient
         .from("participations")
-        .select("tournament_id")
+        .select("unique_token, slot_number, tournament_id")
         .eq("id", participationId)
         .single();
 
-      if (!partError && participation) {
+      if (currentError) {
+        console.error("Error fetching current participation:", currentError);
+      }
+
+      // Only generate token if not already set
+      if (!currentPart?.unique_token || currentPart.unique_token === "") {
+        updateData.unique_token = generateUniqueToken();
+        console.log("Generated token:", updateData.unique_token);
+      } else {
+        console.log("Token already exists, keeping:", currentPart.unique_token);
+      }
+
+      // Only calculate slot if not already set
+      if (currentPart && currentPart.slot_number == null) {
         // Get tournament details for game_mode and max_participants
         const { data: tournament, error: tournError } = await supabaseClient
           .from("tournaments")
           .select("game_mode, max_participants")
-          .eq("id", participation.tournament_id)
+          .eq("id", currentPart.tournament_id)
           .single();
 
         if (!tournError && tournament) {
-          const gameMode = (tournament as { game_mode?: string }).game_mode || "solo";
+          const gameMode = tournament.game_mode || "solo";
           const maxParticipants = tournament.max_participants || 100;
           
           const slotNumber = await getNextSlot(
             supabaseClient, 
-            participation.tournament_id, 
+            currentPart.tournament_id, 
             gameMode, 
             maxParticipants
           );
           
-          if (slotNumber) {
+          if (slotNumber !== null) {
             updateData.slot_number = slotNumber;
             console.log("Assigned slot number:", slotNumber);
           } else {
-            console.log("No available slot found");
+            console.log("No available slot found (tournament may be full)");
           }
         } else {
           console.error("Error fetching tournament:", tournError);
         }
-      } else {
-        console.error("Error fetching participation for slot:", partError);
+      } else if (currentPart?.slot_number != null) {
+        console.log("Slot already exists, keeping:", currentPart.slot_number);
       }
     }
 
