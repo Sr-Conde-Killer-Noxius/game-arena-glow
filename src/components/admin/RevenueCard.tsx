@@ -1,5 +1,5 @@
 import { DollarSign, TrendingUp, Percent } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 
 interface RevenueCardProps {
   totalRevenue: number;
@@ -14,12 +14,6 @@ export function RevenueCard({
   platformRevenue,
   totalParticipations,
 }: RevenueCardProps) {
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value);
-  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 interface Participation {
   id: string;
@@ -260,7 +260,7 @@ export function TicketsTab() {
                         </code>
                       </td>
                       <td className="p-4 font-medium">
-                        R$ {p.tournaments?.entry_fee?.toFixed(2) || "0.00"}
+                        {formatCurrency(p.tournaments?.entry_fee || 0)}
                       </td>
                       <td className="p-4">{getStatusBadge(p.payment_status)}</td>
                       <td className="p-4">

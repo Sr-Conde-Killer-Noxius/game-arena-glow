@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { TicketPurchaseModal } from "@/components/TicketPurchaseModal";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 // Game images
 import freefireImg from "@/assets/games/freefire.jpg";
@@ -415,13 +415,13 @@ export default function TournamentPage() {
                         <div className="text-right">
                           <p className="text-xs text-muted-foreground">Entrada</p>
                           <p className="font-display font-bold text-primary">
-                            R$ {Number(tournament.entry_fee).toFixed(2).replace(".", ",")}
+                            {formatCurrency(Number(tournament.entry_fee))}
                           </p>
                         </div>
                         <div className="text-right">
                           <p className="text-xs text-muted-foreground">Premiação</p>
                           <p className="font-display font-bold text-primary">
-                            R$ {Number(tournament.prize_pool).toFixed(0)}
+                            {formatCurrency(Number(tournament.prize_pool))}
                           </p>
                         </div>
                       </div>
@@ -478,7 +478,7 @@ export default function TournamentPage() {
                             Premiação
                           </p>
                           <p className="font-display font-bold text-sm text-primary">
-                            R$ {Number(tournament.prize_pool).toFixed(0)}
+                            {formatCurrency(Number(tournament.prize_pool))}
                           </p>
                         </div>
                       </div>
@@ -548,9 +548,7 @@ export default function TournamentPage() {
                           ? "Esgotado"
                           : tournament.status !== "open"
                           ? "Inscrições Fechadas"
-                          : `Comprar Ingresso - R$ ${Number(
-                              tournament.entry_fee
-                            ).toFixed(2).replace(".", ",")}`}
+                          : `Comprar Ingresso - ${formatCurrency(Number(tournament.entry_fee))}`}
                       </Button>
                     </div>
                   )}
@@ -616,31 +614,31 @@ export default function TournamentPage() {
                   {selectedTournament.prize_1st != null && selectedTournament.prize_1st > 0 && (
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">🥇 1º Lugar</span>
-                      <span className="font-bold text-primary">R$ {Number(selectedTournament.prize_1st).toFixed(2).replace(".", ",")}</span>
+                      <span className="font-bold text-primary">{formatCurrency(Number(selectedTournament.prize_1st))}</span>
                     </div>
                   )}
                   {selectedTournament.prize_2nd != null && selectedTournament.prize_2nd > 0 && (
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">🥈 2º Lugar</span>
-                      <span className="font-bold">R$ {Number(selectedTournament.prize_2nd).toFixed(2).replace(".", ",")}</span>
+                      <span className="font-bold">{formatCurrency(Number(selectedTournament.prize_2nd))}</span>
                     </div>
                   )}
                   {selectedTournament.prize_3rd != null && selectedTournament.prize_3rd > 0 && (
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">🥉 3º Lugar</span>
-                      <span className="font-bold">R$ {Number(selectedTournament.prize_3rd).toFixed(2).replace(".", ",")}</span>
+                      <span className="font-bold">{formatCurrency(Number(selectedTournament.prize_3rd))}</span>
                     </div>
                   )}
                   {selectedTournament.prize_mvp != null && selectedTournament.prize_mvp > 0 && (
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">🎯 MVP (+Kills)</span>
-                      <span className="font-bold text-amber-500">R$ {Number(selectedTournament.prize_mvp).toFixed(2).replace(".", ",")}</span>
+                      <span className="font-bold text-amber-500">{formatCurrency(Number(selectedTournament.prize_mvp))}</span>
                     </div>
                   )}
                   {/* Fallback if no prizes configured */}
                   {(!selectedTournament.prize_1st && !selectedTournament.prize_2nd && !selectedTournament.prize_3rd && !selectedTournament.prize_mvp) && (
                     <p className="text-sm text-muted-foreground">
-                      Premiação total: R$ {Number(selectedTournament.prize_pool).toFixed(2).replace(".", ",")}
+                      Premiação total: {formatCurrency(Number(selectedTournament.prize_pool))}
                     </p>
                   )}
                 </div>
