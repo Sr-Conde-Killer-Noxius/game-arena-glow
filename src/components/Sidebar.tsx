@@ -52,8 +52,10 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
       <aside
         className={cn(
           "fixed left-0 top-0 z-50 h-full bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col",
-          isOpen ? "w-64" : "w-0 lg:w-20",
-          !isOpen && "overflow-hidden lg:overflow-visible"
+          // Mobile: slide in/out from left
+          isOpen ? "w-64 translate-x-0" : "-translate-x-full lg:translate-x-0",
+          // Desktop: collapsed/expanded width
+          !isOpen && "lg:w-20"
         )}
       >
         {/* Logo */}

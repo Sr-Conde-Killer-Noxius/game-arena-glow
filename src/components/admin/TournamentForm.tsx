@@ -39,6 +39,10 @@ interface TournamentFormState {
   room_id: string;
   room_password: string;
   room_pending: boolean;
+  prize_1st: number;
+  prize_2nd: number;
+  prize_3rd: number;
+  prize_mvp: number;
 }
 
 interface TournamentFormProps {
@@ -122,6 +126,10 @@ const getDefaultFormState = (): TournamentFormState => ({
   room_id: "",
   room_password: "",
   room_pending: true,
+  prize_1st: 0,
+  prize_2nd: 0,
+  prize_3rd: 0,
+  prize_mvp: 0,
 });
 
 export function TournamentForm({ tournamentId, onClose, onSuccess }: TournamentFormProps) {
@@ -174,6 +182,10 @@ export function TournamentForm({ tournamentId, onClose, onSuccess }: TournamentF
           room_id: data.room_id || "",
           room_password: data.room_password || "",
           room_pending: data.room_pending,
+          prize_1st: Number(data.prize_1st) || 0,
+          prize_2nd: Number(data.prize_2nd) || 0,
+          prize_3rd: Number(data.prize_3rd) || 0,
+          prize_mvp: Number(data.prize_mvp) || 0,
         });
 
         // Set time states from the fetched dates
@@ -241,6 +253,10 @@ export function TournamentForm({ tournamentId, onClose, onSuccess }: TournamentF
         room_id: formData.room_id || null,
         room_password: formData.room_password || null,
         room_pending: formData.room_pending,
+        prize_1st: formData.prize_1st || null,
+        prize_2nd: formData.prize_2nd || null,
+        prize_3rd: formData.prize_3rd || null,
+        prize_mvp: formData.prize_mvp || null,
       };
 
       if (isEditing && tournamentId) {
@@ -521,6 +537,70 @@ export function TournamentForm({ tournamentId, onClose, onSuccess }: TournamentF
               placeholder="Regras do torneio..."
               rows={4}
             />
+          </div>
+
+          {/* Prize Distribution Section */}
+          <div className="space-y-4 p-4 border border-border rounded-lg bg-amber-500/5">
+            <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+              🏆 Distribuição da Premiação
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Defina os valores de premiação para cada colocação. Deixe em branco para não exibir.
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="prize_1st" className="text-sm">🥇 1º Lugar (R$)</Label>
+                <Input
+                  id="prize_1st"
+                  name="prize_1st"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.prize_1st || ""}
+                  onChange={handleChange}
+                  placeholder="0,00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="prize_2nd" className="text-sm">🥈 2º Lugar (R$)</Label>
+                <Input
+                  id="prize_2nd"
+                  name="prize_2nd"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.prize_2nd || ""}
+                  onChange={handleChange}
+                  placeholder="0,00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="prize_3rd" className="text-sm">🥉 3º Lugar (R$)</Label>
+                <Input
+                  id="prize_3rd"
+                  name="prize_3rd"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.prize_3rd || ""}
+                  onChange={handleChange}
+                  placeholder="0,00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="prize_mvp" className="text-sm">🎯 MVP (+Kills)</Label>
+                <Input
+                  id="prize_mvp"
+                  name="prize_mvp"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.prize_mvp || ""}
+                  onChange={handleChange}
+                  placeholder="0,00"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Room Configuration Section */}

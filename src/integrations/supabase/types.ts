@@ -266,6 +266,10 @@ export type Database = {
           id: string
           max_participants: number | null
           name: string
+          prize_1st: number | null
+          prize_2nd: number | null
+          prize_3rd: number | null
+          prize_mvp: number | null
           prize_pool: number
           room_id: string | null
           room_password: string | null
@@ -288,6 +292,10 @@ export type Database = {
           id?: string
           max_participants?: number | null
           name: string
+          prize_1st?: number | null
+          prize_2nd?: number | null
+          prize_3rd?: number | null
+          prize_mvp?: number | null
           prize_pool?: number
           room_id?: string | null
           room_password?: string | null
@@ -310,6 +318,10 @@ export type Database = {
           id?: string
           max_participants?: number | null
           name?: string
+          prize_1st?: number | null
+          prize_2nd?: number | null
+          prize_3rd?: number | null
+          prize_mvp?: number | null
           prize_pool?: number
           room_id?: string | null
           room_password?: string | null
