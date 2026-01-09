@@ -21,10 +21,10 @@ interface SidebarProps {
 }
 
 const menuItems = [
+  { icon: User, label: "Perfil", path: "/profile", active: true },
   { icon: Gamepad2, label: "Jogos", path: "/dashboard", active: true },
   { icon: Ticket, label: "Meus Ingressos", path: "/my-tickets", active: true },
   { icon: Play, label: "Entrar na Play", path: "/entrar-na-play", active: true },
-  { icon: User, label: "Perfil", path: "/profile", active: true },
   { icon: Shield, label: "Admin", path: "/admin", active: true, adminOnly: true },
   { icon: Trophy, label: "Cups - Liga", path: "/tournaments", active: false },
   { icon: BarChart3, label: "Ranking", path: "/ranking", active: false },
