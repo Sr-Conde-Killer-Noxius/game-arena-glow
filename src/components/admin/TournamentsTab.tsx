@@ -3,7 +3,7 @@ import { Plus, RefreshCw, Edit2, Trash2, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { TournamentForm } from "./TournamentForm";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -146,10 +146,10 @@ export function TournamentsTab() {
 
                 <div className="text-right flex-shrink-0">
                   <p className="font-display text-xl font-bold text-primary">
-                    R$ {t.prize_pool.toFixed(2)}
+                    {formatCurrency(t.prize_pool)}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Entrada: R$ {t.entry_fee.toFixed(2)}
+                    Entrada: {formatCurrency(t.entry_fee)}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Máx: {t.max_participants} jogadores
