@@ -71,6 +71,10 @@ interface Tournament {
   max_participants: number | null;
   status: string;
   banner_url: string | null;
+  prize_1st: number | null;
+  prize_2nd: number | null;
+  prize_3rd: number | null;
+  prize_mvp: number | null;
 }
 
 const defaultRules = [
@@ -599,32 +603,49 @@ export default function TournamentPage() {
               </ol>
             </div>
 
-            {/* Prize Distribution */}
-            <div className="bg-card border border-border rounded-xl p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-amber-500/10 rounded-lg flex items-center justify-center">
-                  <Trophy className="text-amber-500" size={20} />
+            {/* Prize Distribution - Dynamic based on selected tournament */}
+            {selectedTournament && (
+              <div className="bg-card border border-border rounded-xl p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-amber-500/10 rounded-lg flex items-center justify-center">
+                    <Trophy className="text-amber-500" size={20} />
+                  </div>
+                  <h3 className="font-display font-bold">Premiação</h3>
                 </div>
-                <h3 className="font-display font-bold">Premiação</h3>
+                <div className="space-y-3">
+                  {selectedTournament.prize_1st != null && selectedTournament.prize_1st > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">🥇 1º Lugar</span>
+                      <span className="font-bold text-primary">R$ {Number(selectedTournament.prize_1st).toFixed(2).replace(".", ",")}</span>
+                    </div>
+                  )}
+                  {selectedTournament.prize_2nd != null && selectedTournament.prize_2nd > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">🥈 2º Lugar</span>
+                      <span className="font-bold">R$ {Number(selectedTournament.prize_2nd).toFixed(2).replace(".", ",")}</span>
+                    </div>
+                  )}
+                  {selectedTournament.prize_3rd != null && selectedTournament.prize_3rd > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">🥉 3º Lugar</span>
+                      <span className="font-bold">R$ {Number(selectedTournament.prize_3rd).toFixed(2).replace(".", ",")}</span>
+                    </div>
+                  )}
+                  {selectedTournament.prize_mvp != null && selectedTournament.prize_mvp > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">🎯 MVP (+Kills)</span>
+                      <span className="font-bold text-amber-500">R$ {Number(selectedTournament.prize_mvp).toFixed(2).replace(".", ",")}</span>
+                    </div>
+                  )}
+                  {/* Fallback if no prizes configured */}
+                  {(!selectedTournament.prize_1st && !selectedTournament.prize_2nd && !selectedTournament.prize_3rd && !selectedTournament.prize_mvp) && (
+                    <p className="text-sm text-muted-foreground">
+                      Premiação total: R$ {Number(selectedTournament.prize_pool).toFixed(2).replace(".", ",")}
+                    </p>
+                  )}
+                </div>
               </div>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">🥇 1º Lugar</span>
-                  <span className="font-bold text-primary">50%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">🥈 2º Lugar</span>
-                  <span className="font-bold">30%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">🥉 3º Lugar</span>
-                  <span className="font-bold">20%</span>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground mt-4 pt-4 border-t border-border">
-                * 70% do valor total arrecadado é destinado à premiação
-              </p>
-            </div>
+            )}
           </div>
         </div>
       </div>

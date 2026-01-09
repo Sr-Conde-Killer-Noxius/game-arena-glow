@@ -525,21 +525,16 @@ export function TicketPurchaseModal({
               </div>
             </div>
 
-            {/* Prize Distribution Info */}
+            {/* Entry Fee Info */}
             <div className="bg-muted/50 border border-border rounded-lg p-4">
               <div className="flex items-start gap-3">
                 <Info size={18} className="text-primary mt-0.5 shrink-0" />
                 <div className="text-sm">
                   <p className="font-medium text-foreground mb-1">
-                    Distribuição do valor:
+                    Taxa de inscrição
                   </p>
                   <p className="text-muted-foreground">
-                    <span className="text-primary font-bold">70%</span> (R${" "}
-                    {prizeShare}) vai para a premiação
-                  </p>
-                  <p className="text-muted-foreground">
-                    <span className="text-muted-foreground font-bold">30%</span>{" "}
-                    (R$ {organizationShare}) vai para a organização
+                    O pagamento garante sua vaga no torneio e concorre às premiações definidas.
                   </p>
                 </div>
               </div>
