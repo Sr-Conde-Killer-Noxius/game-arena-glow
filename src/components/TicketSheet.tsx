@@ -58,50 +58,53 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
           <title>Ingresso - ${ticket.tournamentName}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
+            @page { size: A4; margin: 10mm; }
             body { 
               font-family: 'Segoe UI', system-ui, sans-serif;
               background: #fff;
-              padding: 40px;
+              padding: 10px;
+              font-size: 11px;
             }
             .ticket {
-              max-width: 600px;
+              max-width: 100%;
               margin: 0 auto;
-              border: 3px solid #10b981;
-              border-radius: 16px;
+              border: 2px solid #10b981;
+              border-radius: 12px;
               overflow: hidden;
             }
             .header {
               background: linear-gradient(135deg, #10b981, #059669);
               color: white;
-              padding: 24px;
+              padding: 12px;
               text-align: center;
             }
-            .header h1 { font-size: 24px; margin-bottom: 8px; }
-            .header p { opacity: 0.9; font-size: 14px; }
-            .body { padding: 24px; }
+            .header h1 { font-size: 16px; margin-bottom: 2px; }
+            .header p { opacity: 0.9; font-size: 10px; }
+            .body { padding: 12px; }
+            .two-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
             .section {
-              margin-bottom: 20px;
-              padding-bottom: 20px;
+              margin-bottom: 10px;
+              padding-bottom: 10px;
               border-bottom: 1px dashed #e5e7eb;
             }
-            .section:last-child { border-bottom: none; margin-bottom: 0; }
+            .section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
             .section-title {
-              font-size: 12px;
+              font-size: 9px;
               text-transform: uppercase;
               color: #6b7280;
-              margin-bottom: 8px;
+              margin-bottom: 4px;
               font-weight: 600;
             }
             .token-box {
               background: #f0fdf4;
               border: 2px solid #10b981;
-              border-radius: 12px;
-              padding: 16px;
+              border-radius: 8px;
+              padding: 10px;
               text-align: center;
             }
             .token {
               font-family: monospace;
-              font-size: 28px;
+              font-size: 18px;
               font-weight: bold;
               color: #10b981;
               letter-spacing: 2px;
@@ -109,47 +112,50 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
             .slot-box {
               background: #fef3c7;
               border: 2px solid #f59e0b;
-              border-radius: 12px;
-              padding: 16px;
+              border-radius: 8px;
+              padding: 10px;
               text-align: center;
             }
             .slot {
-              font-size: 48px;
+              font-size: 28px;
               font-weight: bold;
               color: #d97706;
             }
             .slot-label {
-              font-size: 14px;
+              font-size: 9px;
               color: #92400e;
-              margin-top: 4px;
+              margin-top: 2px;
             }
-            .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-            .info-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+            .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+            .info-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
             .info-item label { 
-              font-size: 12px; 
+              font-size: 9px; 
               color: #6b7280; 
               display: block;
-              margin-bottom: 4px;
+              margin-bottom: 1px;
             }
-            .info-item span { font-weight: 600; font-size: 14px; }
+            .info-item span { font-weight: 600; font-size: 11px; }
             .partner-row {
               display: flex;
-              gap: 16px;
-              padding: 8px 0;
+              gap: 12px;
+              padding: 4px 0;
               border-bottom: 1px solid #f3f4f6;
             }
             .partner-row:last-child { border-bottom: none; }
             .footer {
               background: #f9fafb;
-              padding: 16px 24px;
-              font-size: 12px;
+              padding: 10px 12px;
+              font-size: 9px;
               color: #6b7280;
-              text-align: center;
             }
             .footer strong { color: #374151; }
+            .footer-title { font-size: 10px; margin-bottom: 4px; }
+            .footer-list { margin: 0; padding-left: 14px; }
+            .footer-list li { margin-bottom: 2px; }
+            .footer-note { margin-top: 6px; font-style: italic; font-size: 8px; }
             @media print {
-              body { padding: 20px; }
-              .ticket { border-width: 2px; }
+              body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+              .ticket { border-width: 2px; page-break-inside: avoid; }
             }
           </style>
         </head>
@@ -160,21 +166,19 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
               <p>Ingresso de Participação</p>
             </div>
             <div class="body">
-              <div class="section">
+              <div class="two-columns" style="margin-bottom: 10px;">
                 <div class="token-box">
                   <div class="section-title">Seu Token de Acesso</div>
                   <div class="token">${ticket.uniqueToken}</div>
                 </div>
-              </div>
-              ${ticket.slotNumber ? `
-              <div class="section">
+                ${ticket.slotNumber ? `
                 <div class="slot-box">
                   <div class="section-title">Seu Slot</div>
                   <div class="slot">#${ticket.slotNumber}</div>
-                  <div class="slot-label">Use este número quando entrar na sala do jogo</div>
+                  <div class="slot-label">Use este número na sala do jogo</div>
                 </div>
+                ` : '<div></div>'}
               </div>
-              ` : ''}
               <div class="section">
                 <div class="section-title">Torneio</div>
                 <div class="info-grid">
@@ -196,71 +200,74 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
                   </div>
                 </div>
               </div>
-              <div class="section">
-                <div class="section-title">Jogador Principal</div>
-                <div class="info-grid">
-                  <div class="info-item">
-                    <label>Nome</label>
-                    <span>${ticket.playerName}</span>
-                  </div>
-                  ${ticket.playerNick ? `
-                  <div class="info-item">
-                    <label>Nick</label>
-                    <span>${ticket.playerNick}</span>
-                  </div>
-                  ` : ''}
-                  ${ticket.playerGameId ? `
-                  <div class="info-item">
-                    <label>ID do Jogo</label>
-                    <span>${ticket.playerGameId}</span>
-                  </div>
-                  ` : ''}
-                  ${ticket.playerCpf ? `
-                  <div class="info-item">
-                    <label>CPF</label>
-                    <span>${ticket.playerCpf}</span>
-                  </div>
-                  ` : ''}
-                  ${ticket.playerCep ? `
-                  <div class="info-item">
-                    <label>CEP</label>
-                    <span>${ticket.playerCep}</span>
-                  </div>
-                  ` : ''}
-                  ${ticket.playerWhatsapp ? `
-                  <div class="info-item">
-                    <label>WhatsApp</label>
-                    <span>${ticket.playerWhatsapp}</span>
-                  </div>
-                  ` : ''}
-                </div>
-              </div>
-              ${partnersInfo.length > 0 ? `
-              <div class="section">
-                <div class="section-title">Parceiro(s)</div>
-                ${partnersInfo.map((p, i) => `
-                <div class="partner-row">
-                  <div class="info-item">
-                    <label>Parceiro ${i + 1}</label>
-                    <span>${p.nick}</span>
-                  </div>
-                  <div class="info-item">
-                    <label>ID</label>
-                    <span>${p.id || '-'}</span>
+              <div class="two-columns">
+                <div class="section" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
+                  <div class="section-title">Jogador Principal</div>
+                  <div class="info-grid" style="gap: 6px;">
+                    <div class="info-item">
+                      <label>Nome</label>
+                      <span>${ticket.playerName}</span>
+                    </div>
+                    ${ticket.playerNick ? `
+                    <div class="info-item">
+                      <label>Nick</label>
+                      <span>${ticket.playerNick}</span>
+                    </div>
+                    ` : ''}
+                    ${ticket.playerGameId ? `
+                    <div class="info-item">
+                      <label>ID do Jogo</label>
+                      <span>${ticket.playerGameId}</span>
+                    </div>
+                    ` : ''}
+                    ${ticket.playerCpf ? `
+                    <div class="info-item">
+                      <label>CPF</label>
+                      <span>${ticket.playerCpf}</span>
+                    </div>
+                    ` : ''}
+                    ${ticket.playerCep ? `
+                    <div class="info-item">
+                      <label>CEP</label>
+                      <span>${ticket.playerCep}</span>
+                    </div>
+                    ` : ''}
+                    ${ticket.playerWhatsapp ? `
+                    <div class="info-item">
+                      <label>WhatsApp</label>
+                      <span>${ticket.playerWhatsapp}</span>
+                    </div>
+                    ` : ''}
                   </div>
                 </div>
-                `).join('')}
+                ${partnersInfo.length > 0 ? `
+                <div class="section" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
+                  <div class="section-title">Parceiro(s)</div>
+                  ${partnersInfo.map((p, i) => `
+                  <div class="partner-row">
+                    <div class="info-item">
+                      <label>Parceiro ${i + 1}</label>
+                      <span>${p.nick}</span>
+                    </div>
+                    <div class="info-item">
+                      <label>ID</label>
+                      <span>${p.id || '-'}</span>
+                    </div>
+                  </div>
+                  `).join('')}
+                </div>
+                ` : '<div></div>'}
               </div>
-              ` : ''}
             </div>
             <div class="footer">
-              <strong>📋 Como usar seu ingresso:</strong><br/><br/>
-              1. Acesse o menu <strong>"Entrar na Play"</strong> no painel lateral<br/>
-              2. Digite o <strong>Token</strong> acima para visualizar o ID e Senha da sala<br/>
-              ${ticket.slotNumber ? `3. Entre na sala do jogo usando seu <strong>Slot #${ticket.slotNumber}</strong><br/>
-              4. Use o mesmo número de Slot no Discord para a call (opcional)<br/><br/>
-              <em>⚠️ Se a sala ainda não estiver disponível, aguarde a configuração pelo administrador.</em>` : `3. Aguarde a atribuição do seu slot após a configuração da sala<br/><br/>
-              <em>⚠️ Se a sala ainda não estiver disponível, aguarde a configuração pelo administrador.</em>`}
+              <div class="footer-title"><strong>📋 Como usar seu ingresso:</strong></div>
+              <ol class="footer-list">
+                <li>Acesse o menu <strong>"Entrar na Play"</strong> no painel lateral</li>
+                <li>Digite o <strong>Token</strong> acima para visualizar o ID e Senha da sala</li>
+                ${ticket.slotNumber ? `<li>Entre na sala do jogo usando seu <strong>Slot #${ticket.slotNumber}</strong></li>
+                <li>Use o mesmo número de Slot no Discord para a call (opcional)</li>` : `<li>Aguarde a atribuição do seu slot após a configuração da sala</li>`}
+              </ol>
+              <div class="footer-note">⚠️ Se a sala ainda não estiver disponível, aguarde a configuração pelo administrador.</div>
             </div>
           </div>
         </body>
