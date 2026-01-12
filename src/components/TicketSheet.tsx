@@ -1,9 +1,12 @@
-import { useRef } from "react";
-import { X, Printer, Copy, Users, User, Hash, Trophy, Calendar, Phone, MapPin, FileText } from "lucide-react";
+import { useRef, useState } from "react";
+import { X, Printer, Copy, Users, User, Hash, Trophy, Calendar, Phone, MapPin, FileText, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { QRCodeSVG } from "qrcode.react";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 interface TicketSheetProps {
   isOpen: boolean;
@@ -32,130 +35,205 @@ interface TicketSheetProps {
 
 export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
   const printRef = useRef<HTMLDivElement>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   if (!isOpen) return null;
 
-  const handlePrint = () => {
-    const printContent = printRef.current;
-    if (!printContent) return;
+  // Build partners info
+  const partnersInfo = [];
+  if (ticket.partnerNick) partnersInfo.push({ nick: ticket.partnerNick, id: ticket.partnerGameId });
+  if (ticket.partner2Nick) partnersInfo.push({ nick: ticket.partner2Nick, id: ticket.partner2GameId });
+  if (ticket.partner3Nick) partnersInfo.push({ nick: ticket.partner3Nick, id: ticket.partner3GameId });
 
-    const printWindow = window.open("", "", "width=800,height=600");
-    if (!printWindow) {
-      toast.error("Não foi possível abrir a janela de impressão");
-      return;
-    }
+  const formattedDate = ticket.tournamentDate 
+    ? format(new Date(ticket.tournamentDate), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })
+    : "A definir";
 
-    // Build partners info for print
-    const partnersInfo = [];
-    if (ticket.partnerNick) partnersInfo.push({ nick: ticket.partnerNick, id: ticket.partnerGameId });
-    if (ticket.partner2Nick) partnersInfo.push({ nick: ticket.partner2Nick, id: ticket.partner2GameId });
-    if (ticket.partner3Nick) partnersInfo.push({ nick: ticket.partner3Nick, id: ticket.partner3GameId });
-
-    printWindow.document.write(`
+  const generatePrintHTML = () => {
+    return `
       <!DOCTYPE html>
       <html>
         <head>
           <title>Ingresso - ${ticket.tournamentName}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            @page { size: A4; margin: 10mm; }
+            @page { size: A4; margin: 12mm; }
             body { 
               font-family: 'Segoe UI', system-ui, sans-serif;
               background: #fff;
-              padding: 10px;
-              font-size: 11px;
+              padding: 0;
+              font-size: 12px;
+              height: 100vh;
             }
             .ticket {
-              max-width: 100%;
-              margin: 0 auto;
-              border: 2px solid #10b981;
-              border-radius: 12px;
+              width: 100%;
+              height: calc(100vh - 24mm);
+              border: 3px solid #10b981;
+              border-radius: 16px;
               overflow: hidden;
+              display: flex;
+              flex-direction: column;
             }
             .header {
               background: linear-gradient(135deg, #10b981, #059669);
               color: white;
-              padding: 12px;
+              padding: 20px;
               text-align: center;
             }
-            .header h1 { font-size: 16px; margin-bottom: 2px; }
-            .header p { opacity: 0.9; font-size: 10px; }
-            .body { padding: 12px; }
-            .two-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-            .section {
-              margin-bottom: 10px;
-              padding-bottom: 10px;
-              border-bottom: 1px dashed #e5e7eb;
+            .header h1 { font-size: 22px; margin-bottom: 4px; font-weight: 700; }
+            .header p { opacity: 0.9; font-size: 13px; }
+            .body { 
+              padding: 20px;
+              flex: 1;
+              display: flex;
+              flex-direction: column;
             }
-            .section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-            .section-title {
-              font-size: 9px;
-              text-transform: uppercase;
-              color: #6b7280;
-              margin-bottom: 4px;
-              font-weight: 600;
+            .top-section {
+              display: grid;
+              grid-template-columns: 1fr auto 1fr;
+              gap: 20px;
+              align-items: center;
+              margin-bottom: 24px;
+              padding-bottom: 20px;
+              border-bottom: 2px dashed #e5e7eb;
             }
             .token-box {
               background: #f0fdf4;
               border: 2px solid #10b981;
-              border-radius: 8px;
-              padding: 10px;
+              border-radius: 12px;
+              padding: 16px;
               text-align: center;
             }
+            .token-label {
+              font-size: 10px;
+              text-transform: uppercase;
+              color: #6b7280;
+              margin-bottom: 8px;
+              font-weight: 600;
+              letter-spacing: 1px;
+            }
             .token {
-              font-family: monospace;
-              font-size: 18px;
+              font-family: 'Courier New', monospace;
+              font-size: 22px;
               font-weight: bold;
               color: #10b981;
-              letter-spacing: 2px;
+              letter-spacing: 3px;
             }
+            .qr-box {
+              background: #fff;
+              border: 2px solid #e5e7eb;
+              border-radius: 12px;
+              padding: 12px;
+              text-align: center;
+            }
+            .qr-box img { width: 100px; height: 100px; }
+            .qr-label { font-size: 9px; color: #6b7280; margin-top: 6px; }
             .slot-box {
               background: #fef3c7;
               border: 2px solid #f59e0b;
-              border-radius: 8px;
-              padding: 10px;
+              border-radius: 12px;
+              padding: 16px;
               text-align: center;
             }
             .slot {
-              font-size: 28px;
+              font-size: 42px;
               font-weight: bold;
               color: #d97706;
+              line-height: 1;
             }
             .slot-label {
-              font-size: 9px;
+              font-size: 10px;
               color: #92400e;
-              margin-top: 2px;
+              margin-top: 8px;
+              font-weight: 500;
             }
-            .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-            .info-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+            .content-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 20px;
+              flex: 1;
+            }
+            .section {
+              background: #f9fafb;
+              border-radius: 12px;
+              padding: 16px;
+            }
+            .section-title {
+              font-size: 11px;
+              text-transform: uppercase;
+              color: #10b981;
+              margin-bottom: 12px;
+              font-weight: 700;
+              letter-spacing: 1px;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+            }
+            .section-title::before {
+              content: '';
+              width: 4px;
+              height: 16px;
+              background: #10b981;
+              border-radius: 2px;
+            }
+            .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
             .info-item label { 
-              font-size: 9px; 
+              font-size: 10px; 
               color: #6b7280; 
               display: block;
-              margin-bottom: 1px;
+              margin-bottom: 2px;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
             }
-            .info-item span { font-weight: 600; font-size: 11px; }
-            .partner-row {
+            .info-item span { 
+              font-weight: 600; 
+              font-size: 13px;
+              color: #1f2937;
+            }
+            .info-full { grid-column: span 2; }
+            .partner-item {
               display: flex;
-              gap: 12px;
-              padding: 4px 0;
-              border-bottom: 1px solid #f3f4f6;
+              justify-content: space-between;
+              padding: 8px 0;
+              border-bottom: 1px solid #e5e7eb;
             }
-            .partner-row:last-child { border-bottom: none; }
+            .partner-item:last-child { border-bottom: none; }
             .footer {
-              background: #f9fafb;
-              padding: 10px 12px;
-              font-size: 9px;
-              color: #6b7280;
+              background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+              border-top: 2px solid #10b981;
+              padding: 16px 20px;
+              margin-top: auto;
             }
-            .footer strong { color: #374151; }
-            .footer-title { font-size: 10px; margin-bottom: 4px; }
-            .footer-list { margin: 0; padding-left: 14px; }
-            .footer-list li { margin-bottom: 2px; }
-            .footer-note { margin-top: 6px; font-style: italic; font-size: 8px; }
+            .footer-title { 
+              font-size: 13px; 
+              font-weight: 700; 
+              color: #059669;
+              margin-bottom: 10px;
+            }
+            .footer-list { 
+              margin: 0; 
+              padding-left: 20px;
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 6px 20px;
+            }
+            .footer-list li { 
+              font-size: 11px;
+              color: #374151;
+            }
+            .footer-list li strong { color: #10b981; }
+            .footer-note { 
+              margin-top: 12px; 
+              font-size: 10px; 
+              color: #6b7280;
+              font-style: italic;
+              text-align: center;
+              padding-top: 10px;
+              border-top: 1px dashed #d1d5db;
+            }
             @media print {
               body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-              .ticket { border-width: 2px; page-break-inside: avoid; }
+              .ticket { page-break-inside: avoid; height: auto; min-height: calc(100vh - 24mm); }
             }
           </style>
         </head>
@@ -166,44 +244,48 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
               <p>Ingresso de Participação</p>
             </div>
             <div class="body">
-              <div class="two-columns" style="margin-bottom: 10px;">
+              <div class="top-section">
                 <div class="token-box">
-                  <div class="section-title">Seu Token de Acesso</div>
+                  <div class="token-label">Seu Token de Acesso</div>
                   <div class="token">${ticket.uniqueToken}</div>
+                </div>
+                <div class="qr-box">
+                  <img src="${generateQRCodeDataURL()}" alt="QR Code" />
+                  <div class="qr-label">Escaneie para verificar</div>
                 </div>
                 ${ticket.slotNumber ? `
                 <div class="slot-box">
-                  <div class="section-title">Seu Slot</div>
+                  <div class="token-label">Seu Slot</div>
                   <div class="slot">#${ticket.slotNumber}</div>
-                  <div class="slot-label">Use este número na sala do jogo</div>
+                  <div class="slot-label">Use na sala do jogo</div>
                 </div>
-                ` : '<div></div>'}
+                ` : '<div class="slot-box"><div class="token-label">Slot</div><div class="slot" style="font-size: 20px; color: #9ca3af;">Pendente</div><div class="slot-label">Aguardando atribuição</div></div>'}
               </div>
-              <div class="section">
-                <div class="section-title">Torneio</div>
-                <div class="info-grid">
-                  <div class="info-item">
-                    <label>Nome</label>
-                    <span>${ticket.tournamentName}</span>
-                  </div>
-                  <div class="info-item">
-                    <label>Jogo</label>
-                    <span>${ticket.tournamentGame}</span>
-                  </div>
-                  <div class="info-item">
-                    <label>Modo</label>
-                    <span>${ticket.tournamentGameMode}</span>
-                  </div>
-                  <div class="info-item">
-                    <label>Data</label>
-                    <span>${ticket.tournamentDate}</span>
+              <div class="content-grid">
+                <div class="section">
+                  <div class="section-title">🏆 Torneio</div>
+                  <div class="info-grid">
+                    <div class="info-item info-full">
+                      <label>Nome do Torneio</label>
+                      <span>${ticket.tournamentName}</span>
+                    </div>
+                    <div class="info-item">
+                      <label>Jogo</label>
+                      <span>${ticket.tournamentGame}</span>
+                    </div>
+                    <div class="info-item">
+                      <label>Modo</label>
+                      <span>${ticket.tournamentGameMode}</span>
+                    </div>
+                    <div class="info-item info-full">
+                      <label>Data e Hora</label>
+                      <span>${formattedDate}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div class="two-columns">
-                <div class="section" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
-                  <div class="section-title">Jogador Principal</div>
-                  <div class="info-grid" style="gap: 6px;">
+                <div class="section">
+                  <div class="section-title">👤 Jogador Principal</div>
+                  <div class="info-grid">
                     <div class="info-item">
                       <label>Nome</label>
                       <span>${ticket.playerName}</span>
@@ -241,43 +323,162 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
                   </div>
                 </div>
                 ${partnersInfo.length > 0 ? `
-                <div class="section" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
-                  <div class="section-title">Parceiro(s)</div>
-                  ${partnersInfo.map((p, i) => `
-                  <div class="partner-row">
-                    <div class="info-item">
-                      <label>Parceiro ${i + 1}</label>
-                      <span>${p.nick}</span>
+                <div class="section" style="grid-column: span 2;">
+                  <div class="section-title">👥 Parceiro(s)</div>
+                  <div style="display: grid; grid-template-columns: repeat(${Math.min(partnersInfo.length, 3)}, 1fr); gap: 16px;">
+                    ${partnersInfo.map((p, i) => `
+                    <div class="partner-item" style="flex-direction: column; border: none; background: #fff; padding: 12px; border-radius: 8px;">
+                      <div class="info-item">
+                        <label>Parceiro ${i + 1}</label>
+                        <span>${p.nick}</span>
+                      </div>
+                      <div class="info-item" style="margin-top: 8px;">
+                        <label>ID</label>
+                        <span>${p.id || '-'}</span>
+                      </div>
                     </div>
-                    <div class="info-item">
-                      <label>ID</label>
-                      <span>${p.id || '-'}</span>
-                    </div>
+                    `).join('')}
                   </div>
-                  `).join('')}
                 </div>
-                ` : '<div></div>'}
+                ` : ''}
               </div>
             </div>
             <div class="footer">
-              <div class="footer-title"><strong>📋 Como usar seu ingresso:</strong></div>
+              <div class="footer-title">📋 Como usar seu ingresso:</div>
               <ol class="footer-list">
-                <li>Acesse o menu <strong>"Entrar na Play"</strong> no painel lateral</li>
-                <li>Digite o <strong>Token</strong> acima para visualizar o ID e Senha da sala</li>
-                ${ticket.slotNumber ? `<li>Entre na sala do jogo usando seu <strong>Slot #${ticket.slotNumber}</strong></li>
-                <li>Use o mesmo número de Slot no Discord para a call (opcional)</li>` : `<li>Aguarde a atribuição do seu slot após a configuração da sala</li>`}
+                <li>Acesse o menu <strong>"Entrar na Play"</strong></li>
+                <li>Digite o <strong>Token</strong> para ver a sala</li>
+                ${ticket.slotNumber ? `<li>Entre usando seu <strong>Slot #${ticket.slotNumber}</strong></li>
+                <li>Use o Slot no <strong>Discord</strong> (opcional)</li>` : `<li>Aguarde a <strong>atribuição do slot</strong></li><li></li>`}
               </ol>
-              <div class="footer-note">⚠️ Se a sala ainda não estiver disponível, aguarde a configuração pelo administrador.</div>
+              <div class="footer-note">⚠️ Se a sala não estiver disponível, aguarde a configuração pelo administrador.</div>
             </div>
           </div>
         </body>
       </html>
-    `);
+    `;
+  };
 
+  const generateQRCodeDataURL = () => {
+    const canvas = document.createElement('canvas');
+    const size = 100;
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+    
+    // Simple QR code placeholder - the actual QR will be rendered properly in print
+    const qrData = `JPG-TICKET:${ticket.uniqueToken}`;
+    
+    // Create a temporary SVG element to get the QR code
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"></svg>`;
+    
+    // We'll use a data URL approach for the QR code
+    return `data:image/svg+xml,${encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+        <rect width="100%" height="100%" fill="white"/>
+        <text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="#10b981">${ticket.uniqueToken}</text>
+      </svg>
+    `)}`;
+  };
+
+  const handlePrint = () => {
+    const printWindow = window.open("", "", "width=800,height=600");
+    if (!printWindow) {
+      toast.error("Não foi possível abrir a janela de impressão");
+      return;
+    }
+
+    // Generate proper QR code for print
+    const qrCanvas = document.getElementById('qr-code-print') as HTMLCanvasElement | null;
+    let qrDataUrl = '';
+    
+    // Get QR code as data URL
+    const qrElement = document.querySelector('#hidden-qr svg') as SVGElement | null;
+    if (qrElement) {
+      const svgData = new XMLSerializer().serializeToString(qrElement);
+      qrDataUrl = `data:image/svg+xml;base64,${btoa(svgData)}`;
+    }
+
+    const htmlContent = generatePrintHTML().replace(
+      `<img src="${generateQRCodeDataURL()}" alt="QR Code" />`,
+      `<img src="${qrDataUrl || generateQRCodeDataURL()}" alt="QR Code" />`
+    );
+
+    printWindow.document.write(htmlContent);
     printWindow.document.close();
     printWindow.focus();
     printWindow.print();
     printWindow.close();
+  };
+
+  const handleDownloadPDF = async () => {
+    setIsDownloading(true);
+    try {
+      // Create a temporary container for PDF generation
+      const tempContainer = document.createElement('div');
+      tempContainer.style.position = 'absolute';
+      tempContainer.style.left = '-9999px';
+      tempContainer.style.width = '210mm';
+      tempContainer.style.minHeight = '297mm';
+      tempContainer.style.background = 'white';
+      document.body.appendChild(tempContainer);
+
+      // Get QR code as data URL
+      const qrElement = document.querySelector('#hidden-qr svg') as SVGElement | null;
+      let qrDataUrl = '';
+      if (qrElement) {
+        const svgData = new XMLSerializer().serializeToString(qrElement);
+        qrDataUrl = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgData)))}`;
+      }
+
+      const htmlContent = generatePrintHTML().replace(
+        `<img src="${generateQRCodeDataURL()}" alt="QR Code" />`,
+        `<img src="${qrDataUrl}" alt="QR Code" style="width: 100px; height: 100px;" />`
+      );
+
+      // Extract body content
+      const bodyMatch = htmlContent.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+      const styleMatch = htmlContent.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+      
+      if (bodyMatch && styleMatch) {
+        tempContainer.innerHTML = `<style>${styleMatch[1]}</style>${bodyMatch[1]}`;
+      }
+
+      // Wait for images to load
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      const canvas = await html2canvas(tempContainer, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        width: 794, // A4 width at 96 DPI
+        height: 1123, // A4 height at 96 DPI
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Ingresso_${ticket.tournamentName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+
+      document.body.removeChild(tempContainer);
+      toast.success("PDF baixado com sucesso!");
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error("Erro ao gerar PDF. Tente usar a opção de impressão.");
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   const copyToken = () => {
@@ -299,10 +500,6 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
     }
   };
 
-  const formattedDate = ticket.tournamentDate 
-    ? format(new Date(ticket.tournamentDate), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })
-    : "A definir";
-
   // Build partners list
   const partners = [];
   if (ticket.partnerNick) partners.push({ nick: ticket.partnerNick, id: ticket.partnerGameId });
@@ -315,6 +512,17 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
         className="absolute inset-0 bg-background/80 backdrop-blur-sm"
         onClick={onClose}
       />
+
+      {/* Hidden QR Code for capturing */}
+      <div id="hidden-qr" className="hidden">
+        <QRCodeSVG
+          value={`JPG-TICKET:${ticket.uniqueToken}`}
+          size={100}
+          level="M"
+          bgColor="#ffffff"
+          fgColor="#10b981"
+        />
+      </div>
 
       <div className="relative bg-card border border-border rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto mx-4 shadow-2xl">
         {/* Header */}
@@ -345,29 +553,55 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
             </div>
           </div>
 
-          {/* Slot Section */}
-          {ticket.slotNumber && (
-            <div className="bg-amber-500/10 border-2 border-amber-500 rounded-xl p-6 text-center">
-              <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
-                Seu Slot
-              </p>
-              <div className="flex items-center justify-center gap-2">
-                <Hash className="text-amber-500" size={24} />
-                <span className="text-4xl md:text-5xl font-bold text-amber-500">
-                  {ticket.slotNumber}
-                </span>
-                <Button variant="ghost" size="icon" onClick={copySlot}>
-                  <Copy size={18} />
-                </Button>
-              </div>
-              <p className="text-sm text-muted-foreground mt-3">
-                Use este número quando entrar na sala e no Discord
-              </p>
+          {/* QR Code and Slot Section */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-muted/50 border border-border rounded-xl p-4 flex flex-col items-center justify-center">
+              <QRCodeSVG
+                value={`JPG-TICKET:${ticket.uniqueToken}`}
+                size={80}
+                level="M"
+                bgColor="transparent"
+                fgColor="currentColor"
+                className="text-primary"
+              />
+              <p className="text-xs text-muted-foreground mt-2">Escaneie para verificar</p>
             </div>
-          )}
+            
+            {ticket.slotNumber ? (
+              <div className="bg-amber-500/10 border-2 border-amber-500 rounded-xl p-4 text-center flex flex-col justify-center">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+                  Seu Slot
+                </p>
+                <div className="flex items-center justify-center gap-1">
+                  <Hash className="text-amber-500" size={20} />
+                  <span className="text-4xl font-bold text-amber-500">
+                    {ticket.slotNumber}
+                  </span>
+                  <Button variant="ghost" size="icon" onClick={copySlot} className="h-8 w-8">
+                    <Copy size={14} />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Use na sala e Discord
+                </p>
+              </div>
+            ) : (
+              <div className="bg-muted/30 border border-border rounded-xl p-4 text-center flex flex-col justify-center">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+                  Slot
+                </p>
+                <span className="text-2xl font-bold text-muted-foreground">
+                  Pendente
+                </span>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Aguardando atribuição
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* Tournament Info */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             <h3 className="font-display font-bold flex items-center gap-2">
               <Trophy size={18} className="text-primary" />
               Torneio
@@ -377,7 +611,7 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
                 <p className="text-xs text-muted-foreground">Nome</p>
                 <p className="font-semibold">{ticket.tournamentName}</p>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <p className="text-xs text-muted-foreground">Jogo</p>
                   <p className="font-medium">{ticket.tournamentGame}</p>
@@ -388,24 +622,24 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
                   </p>
                   <p className="font-medium capitalize">{ticket.tournamentGameMode}</p>
                 </div>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Calendar size={12} /> Data
-                </p>
-                <p className="font-medium">{formattedDate}</p>
+                <div>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Calendar size={12} /> Data
+                  </p>
+                  <p className="font-medium text-sm">{formattedDate}</p>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Player Info */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             <h3 className="font-display font-bold flex items-center gap-2">
               <User size={18} className="text-primary" />
               Jogador Principal
             </h3>
             <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <p className="text-xs text-muted-foreground">Nome</p>
                   <p className="font-semibold">{ticket.playerName}</p>
@@ -417,13 +651,13 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
                   </div>
                 )}
               </div>
-              {ticket.playerGameId && (
-                <div>
-                  <p className="text-xs text-muted-foreground">ID do Jogo</p>
-                  <p className="font-medium">{ticket.playerGameId}</p>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
+                {ticket.playerGameId && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">ID do Jogo</p>
+                    <p className="font-medium">{ticket.playerGameId}</p>
+                  </div>
+                )}
                 {ticket.playerCpf && (
                   <div>
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -440,40 +674,37 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
                     <p className="font-medium">{ticket.playerCep}</p>
                   </div>
                 )}
+                {ticket.playerWhatsapp && (
+                  <div>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Phone size={12} /> WhatsApp
+                    </p>
+                    <p className="font-medium">{ticket.playerWhatsapp}</p>
+                  </div>
+                )}
               </div>
-              {ticket.playerWhatsapp && (
-                <div>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Phone size={12} /> WhatsApp
-                  </p>
-                  <p className="font-medium">{ticket.playerWhatsapp}</p>
-                </div>
-              )}
             </div>
           </div>
 
           {/* Partners Info */}
           {partners.length > 0 && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <h3 className="font-display font-bold flex items-center gap-2">
                 <Users size={18} className="text-primary" />
                 Parceiro(s)
               </h3>
-              <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-                {partners.map((partner, index) => (
-                  <div key={index} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                    <div>
+              <div className="bg-muted/50 rounded-lg p-4">
+                <div className="grid grid-cols-2 gap-3">
+                  {partners.map((partner, index) => (
+                    <div key={index} className="bg-background/50 rounded-lg p-3">
                       <p className="text-xs text-muted-foreground">Parceiro {index + 1}</p>
                       <p className="font-medium">{partner.nick}</p>
+                      {partner.id && (
+                        <p className="text-xs text-muted-foreground mt-1">ID: {partner.id}</p>
+                      )}
                     </div>
-                    {partner.id && (
-                      <div className="text-right">
-                        <p className="text-xs text-muted-foreground">ID</p>
-                        <p className="font-medium">{partner.id}</p>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -481,32 +712,40 @@ export function TicketSheet({ isOpen, onClose, ticket }: TicketSheetProps) {
           {/* Instructions */}
           <div className="bg-muted/30 border border-border rounded-lg p-4">
             <p className="text-sm font-medium mb-2">📋 Como usar seu ingresso:</p>
-            <ul className="text-sm text-muted-foreground space-y-1.5">
-              <li>1. Acesse o menu <strong className="text-foreground">"Entrar na Play"</strong> no painel lateral</li>
-              <li>2. Digite o <strong className="text-foreground">Token</strong> acima para ver ID e Senha da sala</li>
+            <ul className="text-sm text-muted-foreground space-y-1">
+              <li>1. Acesse o menu <strong className="text-foreground">"Entrar na Play"</strong></li>
+              <li>2. Digite o <strong className="text-foreground">Token</strong> para ver a sala</li>
               {ticket.slotNumber ? (
                 <>
-                  <li>3. Entre na sala do jogo usando seu <strong className="text-foreground">Slot #{ticket.slotNumber}</strong></li>
-                  <li>4. Use o mesmo número de Slot no Discord para a call (opcional)</li>
+                  <li>3. Entre usando seu <strong className="text-foreground">Slot #{ticket.slotNumber}</strong></li>
+                  <li>4. Use o Slot no Discord (opcional)</li>
                 </>
               ) : (
-                <li>3. Aguarde a atribuição do seu slot após a configuração da sala</li>
+                <li>3. Aguarde a atribuição do seu slot</li>
               )}
             </ul>
-            <p className="text-xs text-muted-foreground mt-3 italic">
-              ⚠️ Se a sala ainda não estiver disponível, aguarde a configuração pelo administrador.
+            <p className="text-xs text-muted-foreground mt-2 italic">
+              ⚠️ Aguarde a configuração se a sala não estiver disponível.
             </p>
           </div>
         </div>
 
         {/* Actions */}
         <div className="sticky bottom-0 bg-card/95 backdrop-blur-sm border-t border-border p-4 flex gap-3">
-          <Button onClick={handlePrint} className="flex-1 gap-2">
-            <Printer size={18} />
-            Imprimir / Salvar PDF
+          <Button 
+            onClick={handleDownloadPDF} 
+            className="flex-1 gap-2"
+            disabled={isDownloading}
+          >
+            <Download size={18} />
+            {isDownloading ? "Gerando..." : "Baixar PDF"}
           </Button>
-          <Button variant="outline" onClick={onClose}>
-            Fechar
+          <Button onClick={handlePrint} variant="outline" className="gap-2">
+            <Printer size={18} />
+            Imprimir
+          </Button>
+          <Button variant="ghost" onClick={onClose}>
+            <X size={18} />
           </Button>
         </div>
       </div>
