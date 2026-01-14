@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
-import { Plus, RefreshCw, Edit2, Trash2, Trophy } from "lucide-react";
+import { Plus, RefreshCw, Edit2, Trash2, Trophy, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn, formatCurrency } from "@/lib/utils";
 import { TournamentForm } from "./TournamentForm";
+import { RoomReportModal } from "./RoomReportModal";
 import type { Database } from "@/integrations/supabase/types";
 
 type GameType = Database["public"]["Enums"]["game_type"];
+type GameMode = Database["public"]["Enums"]["game_mode"];
 type TournamentStatus = Database["public"]["Enums"]["tournament_status"];
 
 // Use the full database type to ensure all fields are included
@@ -18,6 +20,7 @@ export function TournamentsTab() {
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
+  const [roomReportTournament, setRoomReportTournament] = useState<Tournament | null>(null);
 
   useEffect(() => {
     fetchTournaments();
@@ -161,6 +164,14 @@ export function TournamentsTab() {
                 <Button
                   variant="outline"
                   size="sm"
+                  onClick={() => setRoomReportTournament(t)}
+                >
+                  <Users size={14} />
+                  Sala
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => {
                     setEditingTournament(t);
                     setShowForm(true);
@@ -192,6 +203,15 @@ export function TournamentsTab() {
             setEditingTournament(null);
           }}
           onSuccess={fetchTournaments}
+        />
+      )}
+
+      {roomReportTournament && (
+        <RoomReportModal
+          tournamentId={roomReportTournament.id}
+          tournamentName={roomReportTournament.name}
+          gameMode={roomReportTournament.game_mode}
+          onClose={() => setRoomReportTournament(null)}
         />
       )}
     </div>
