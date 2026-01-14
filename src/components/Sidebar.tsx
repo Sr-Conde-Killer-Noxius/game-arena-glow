@@ -43,7 +43,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
       {/* Mobile overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden touch-manipulation"
           onClick={onToggle}
         />
       )}
@@ -52,10 +52,12 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
       <aside
         className={cn(
           "fixed left-0 top-0 z-50 h-full bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col",
-          // Mobile: slide in/out from left
-          isOpen ? "w-64 translate-x-0" : "-translate-x-full lg:translate-x-0",
+          // Mobile: slide in/out from left with full width
+          isOpen ? "w-[280px] sm:w-64 translate-x-0" : "-translate-x-full lg:translate-x-0",
           // Desktop: collapsed/expanded width
-          !isOpen && "lg:w-20"
+          !isOpen && "lg:w-20",
+          // Safe area for notched devices
+          "safe-area-inset-left"
         )}
       >
         {/* Logo */}

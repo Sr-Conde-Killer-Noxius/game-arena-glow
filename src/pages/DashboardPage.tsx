@@ -143,14 +143,14 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="h-20 border-b border-border px-6 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h1 className="font-display text-xl font-bold">Dashboard</h1>
+      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm h-14 sm:h-16 lg:h-20 border-b border-border px-4 sm:px-6 flex items-center justify-between">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <h1 className="font-display text-base sm:text-lg lg:text-xl font-bold truncate">Dashboard</h1>
         </div>
 
-        <div className="flex items-center gap-4">
-          {/* Search */}
-          <div className="hidden md:flex relative">
+        <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
+          {/* Search - hidden on mobile */}
+          <div className="hidden lg:flex relative">
             <Search
               className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
               size={18}
@@ -163,50 +163,50 @@ export default function DashboardPage() {
           </div>
 
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell size={20} />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full" />
+          <Button variant="ghost" size="icon" className="relative h-9 w-9 sm:h-10 sm:w-10 touch-manipulation">
+            <Bell size={18} className="sm:w-5 sm:h-5" />
+            <span className="absolute top-1 right-1 sm:top-1.5 sm:right-1.5 w-2 h-2 bg-primary rounded-full" />
           </Button>
 
           {/* Profile */}
-          <Button variant="ghost" size="icon">
-            <User size={20} />
+          <Button variant="ghost" size="icon" className="h-9 w-9 sm:h-10 sm:w-10 touch-manipulation">
+            <User size={18} className="sm:w-5 sm:h-5" />
           </Button>
 
           {/* Logout */}
-          <Button variant="ghost" size="icon" onClick={handleLogout}>
-            <LogOut size={20} />
+          <Button variant="ghost" size="icon" onClick={handleLogout} className="h-9 w-9 sm:h-10 sm:w-10 touch-manipulation">
+            <LogOut size={18} className="sm:w-5 sm:h-5" />
           </Button>
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="p-6 lg:p-10">
+      <div className="p-4 sm:p-6 lg:p-10">
         {/* Welcome Section */}
-        <div className="mb-10">
-          <h2 className="font-display text-3xl md:text-4xl font-bold mb-2">
-            Olá, <span className="text-primary">{displayName}</span>!
+        <div className="mb-6 sm:mb-8 lg:mb-10">
+          <h2 className="font-display text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-1 sm:mb-2">
+            Olá, <span className="text-primary truncate">{displayName}</span>!
           </h2>
-          <p className="text-muted-foreground text-lg">
+          <p className="text-muted-foreground text-sm sm:text-base lg:text-lg">
             Escolha seu jogo e comece a competir.
           </p>
         </div>
 
         {/* Games Grid */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="font-display text-xl font-bold">Jogos Disponíveis</h3>
-            <span className="text-sm text-muted-foreground">
+        <div className="mb-6 sm:mb-8">
+          <div className="flex items-center justify-between mb-4 sm:mb-6 gap-2">
+            <h3 className="font-display text-base sm:text-lg lg:text-xl font-bold">Jogos Disponíveis</h3>
+            <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
               {isLoading ? "Carregando..." : `${activeGamesCount} de ${games.length} ativos`}
             </span>
           </div>
 
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 lg:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-6">
               {games.map((game) => (
                 <GameCard
                   key={game.id}
@@ -221,7 +221,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid md:grid-cols-3 gap-4 lg:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
           {[
             { label: "Partidas Jogadas", value: "0", change: "Comece agora!" },
             { label: "Vitórias", value: "0", change: "Sua primeira espera" },
@@ -229,15 +229,15 @@ export default function DashboardPage() {
           ].map((stat) => (
             <div
               key={stat.label}
-              className="gradient-card p-6 rounded-xl border border-border/50"
+              className="gradient-card p-4 sm:p-6 rounded-xl border border-border/50"
             >
-              <p className="text-sm text-muted-foreground uppercase tracking-wide mb-1">
+              <p className="text-xs sm:text-sm text-muted-foreground uppercase tracking-wide mb-1">
                 {stat.label}
               </p>
-              <p className="font-display text-3xl font-bold text-foreground mb-1">
+              <p className="font-display text-2xl sm:text-3xl font-bold text-foreground mb-1">
                 {stat.value}
               </p>
-              <p className="text-sm text-primary">{stat.change}</p>
+              <p className="text-xs sm:text-sm text-primary">{stat.change}</p>
             </div>
           ))}
         </div>

@@ -360,42 +360,42 @@ export default function TournamentPage() {
       </div>
 
       {/* Content */}
-      <div className="max-w-6xl mx-auto px-6 py-12">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 lg:py-12">
         {/* How to Participate - Above tournaments */}
-        <div className="bg-card border border-border rounded-xl p-6 mb-8">
+        <div className="bg-card border border-border rounded-xl p-4 sm:p-6 mb-6 sm:mb-8">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-              <Info className="text-primary" size={20} />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+              <Info className="text-primary" size={18} />
             </div>
-            <h3 className="font-display font-bold">Como Participar</h3>
+            <h3 className="font-display font-bold text-sm sm:text-base">Como Participar</h3>
           </div>
-          <ol className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm text-muted-foreground">
-            <li className="flex items-start gap-3">
-              <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold shrink-0">
+          <ol className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
+            <li className="flex items-start gap-2 sm:gap-3">
+              <span className="w-5 h-5 sm:w-6 sm:h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold shrink-0">
                 1
               </span>
               <span>Selecione um torneio da lista</span>
             </li>
-            <li className="flex items-start gap-3">
-              <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold shrink-0">
+            <li className="flex items-start gap-2 sm:gap-3">
+              <span className="w-5 h-5 sm:w-6 sm:h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold shrink-0">
                 2
               </span>
               <span>Clique em "Comprar Ingresso"</span>
             </li>
-            <li className="flex items-start gap-3">
-              <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold shrink-0">
+            <li className="flex items-start gap-2 sm:gap-3">
+              <span className="w-5 h-5 sm:w-6 sm:h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold shrink-0">
                 3
               </span>
               <span>Preencha seus dados e envie os prints</span>
             </li>
-            <li className="flex items-start gap-3">
-              <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold shrink-0">
+            <li className="flex items-start gap-2 sm:gap-3">
+              <span className="w-5 h-5 sm:w-6 sm:h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold shrink-0">
                 4
               </span>
               <span>Pague via PIX e receba seu token</span>
             </li>
-            <li className="flex items-start gap-3">
-              <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold shrink-0">
+            <li className="flex items-start gap-2 sm:gap-3">
+              <span className="w-5 h-5 sm:w-6 sm:h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold shrink-0">
                 5
               </span>
               <span>Entre na sala no horário com seu slot</span>
@@ -404,8 +404,8 @@ export default function TournamentPage() {
         </div>
 
         {/* Tournament List */}
-        <div className="space-y-4">
-          <h2 className="font-display font-bold text-xl mb-4">
+        <div className="space-y-3 sm:space-y-4">
+          <h2 className="font-display font-bold text-base sm:text-lg lg:text-xl mb-3 sm:mb-4">
             Selecione um Torneio
           </h2>
 
@@ -419,49 +419,49 @@ export default function TournamentPage() {
               <div
                 key={tournament.id}
                 className={cn(
-                  "bg-card border rounded-xl overflow-hidden transition-all cursor-pointer",
+                  "bg-card border rounded-xl overflow-hidden transition-all cursor-pointer touch-manipulation",
                   isSelected ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-primary/50"
                 )}
                 onClick={() => handleSelectTournament(tournament)}
               >
                 {/* Tournament Card Header */}
-                <div className="p-4 md:p-6">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="p-3 sm:p-4 lg:p-6">
+                  <div className="flex flex-col gap-3 sm:gap-4">
                     <div className="space-y-2">
                       {getStatusBadge(tournament.status)}
-                      <h3 className="font-display font-bold text-lg md:text-xl">
+                      <h3 className="font-display font-bold text-base sm:text-lg lg:text-xl">
                         {tournament.name}
                       </h3>
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1.5">
-                          <Calendar size={14} className="text-primary" />
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:gap-4 text-xs sm:text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1 sm:gap-1.5">
+                          <Calendar size={12} className="text-primary sm:w-3.5 sm:h-3.5" />
                           {formatDate(tournament.start_date, tournament.start_date_pending)}
                         </span>
-                        <span className="flex items-center gap-1.5">
-                          <Clock size={14} className="text-primary" />
+                        <span className="flex items-center gap-1 sm:gap-1.5">
+                          <Clock size={12} className="text-primary sm:w-3.5 sm:h-3.5" />
                           {formatTime(tournament.start_date)}
                         </span>
-                        <span className="flex items-center gap-1.5">
-                          <Users size={14} className="text-primary" />
+                        <span className="flex items-center gap-1 sm:gap-1.5">
+                          <Users size={12} className="text-primary sm:w-3.5 sm:h-3.5" />
                           {participantCount}/{maxParticipants}
                         </span>
-                        <span className="flex items-center gap-1.5">
-                          <Gamepad2 size={14} className="text-primary" />
+                        <span className="flex items-center gap-1 sm:gap-1.5">
+                          <Gamepad2 size={12} className="text-primary sm:w-3.5 sm:h-3.5" />
                           {gameModeNames[tournament.game_mode] || tournament.game_mode}
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <p className="text-xs text-muted-foreground">Entrada</p>
-                        <p className="font-display font-bold text-primary">
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <div className="text-left sm:text-right">
+                        <p className="text-[10px] sm:text-xs text-muted-foreground">Entrada</p>
+                        <p className="font-display font-bold text-sm sm:text-base text-primary">
                           {formatCurrency(Number(tournament.entry_fee))}
                         </p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-xs text-muted-foreground">Premiação</p>
-                        <p className="font-display font-bold text-primary">
+                      <div className="text-left sm:text-right">
+                        <p className="text-[10px] sm:text-xs text-muted-foreground">Premiação</p>
+                        <p className="font-display font-bold text-sm sm:text-base text-primary">
                           {formatCurrency(Number(tournament.prize_pool))}
                         </p>
                       </div>
@@ -471,100 +471,100 @@ export default function TournamentPage() {
 
                 {/* Expanded Details */}
                 {isSelected && (
-                  <div className="border-t border-border p-4 md:p-6 bg-muted/30 space-y-6">
+                  <div className="border-t border-border p-3 sm:p-4 lg:p-6 bg-muted/30 space-y-4 sm:space-y-6">
                     {/* Description */}
                     {tournament.description && (
                       <div>
-                        <p className="text-muted-foreground whitespace-pre-line">
+                        <p className="text-sm text-muted-foreground whitespace-pre-line">
                           {tournament.description}
                         </p>
                       </div>
                     )}
 
                     {/* Info Cards */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="bg-card border border-border rounded-xl p-4">
-                        <Calendar className="text-primary mb-2" size={24} />
-                        <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
+                      <div className="bg-card border border-border rounded-xl p-3 sm:p-4">
+                        <Calendar className="text-primary mb-1 sm:mb-2" size={20} />
+                        <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">
                           Data
                         </p>
-                        <p className="font-display font-bold text-sm">
+                        <p className="font-display font-bold text-xs sm:text-sm">
                           {formatFullDate(tournament.start_date, tournament.start_date_pending)}
                         </p>
                       </div>
 
-                      <div className="bg-card border border-border rounded-xl p-4">
-                        <Clock className="text-primary mb-2" size={24} />
-                        <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                      <div className="bg-card border border-border rounded-xl p-3 sm:p-4">
+                        <Clock className="text-primary mb-1 sm:mb-2" size={20} />
+                        <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">
                           Horário
                         </p>
-                        <p className="font-display font-bold text-sm">
+                        <p className="font-display font-bold text-xs sm:text-sm">
                           {formatTime(tournament.start_date)}
                         </p>
                       </div>
 
-                      <div className="bg-card border border-border rounded-xl p-4">
-                        <Users className="text-primary mb-2" size={24} />
-                        <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                      <div className="bg-card border border-border rounded-xl p-3 sm:p-4">
+                        <Users className="text-primary mb-1 sm:mb-2" size={20} />
+                        <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">
                           Vagas
                         </p>
-                        <p className="font-display font-bold text-sm">
+                        <p className="font-display font-bold text-xs sm:text-sm">
                           {spotsLeft} restantes
                         </p>
                       </div>
 
-                      <div className="bg-card border border-border rounded-xl p-4">
-                        <Trophy className="text-primary mb-2" size={24} />
-                        <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                      <div className="bg-card border border-border rounded-xl p-3 sm:p-4">
+                        <Trophy className="text-primary mb-1 sm:mb-2" size={20} />
+                        <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">
                           Premiação
                         </p>
-                        <p className="font-display font-bold text-sm text-primary">
+                        <p className="font-display font-bold text-xs sm:text-sm text-primary">
                           {formatCurrency(Number(tournament.prize_pool))}
                         </p>
                       </div>
                     </div>
 
                     {/* Prize Distribution - Inside tournament card */}
-                    <div className="bg-card border border-border rounded-xl p-6">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-amber-500/10 rounded-lg flex items-center justify-center">
-                          <Trophy className="text-amber-500" size={20} />
+                    <div className="bg-card border border-border rounded-xl p-4 sm:p-6">
+                      <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-amber-500/10 rounded-lg flex items-center justify-center">
+                          <Trophy className="text-amber-500" size={18} />
                         </div>
-                        <h4 className="font-display font-bold">Premiação Detalhada</h4>
+                        <h4 className="font-display font-bold text-sm sm:text-base">Premiação Detalhada</h4>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
                         {tournament.prize_1st != null && tournament.prize_1st > 0 && (
-                          <div className="text-center p-3 bg-muted/50 rounded-lg">
-                            <span className="text-2xl">🥇</span>
-                            <p className="text-xs text-muted-foreground mt-1">1º Lugar</p>
-                            <p className="font-bold text-primary">{formatCurrency(Number(tournament.prize_1st))}</p>
+                          <div className="text-center p-2 sm:p-3 bg-muted/50 rounded-lg">
+                            <span className="text-xl sm:text-2xl">🥇</span>
+                            <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">1º Lugar</p>
+                            <p className="font-bold text-xs sm:text-sm text-primary">{formatCurrency(Number(tournament.prize_1st))}</p>
                           </div>
                         )}
                         {tournament.prize_2nd != null && tournament.prize_2nd > 0 && (
-                          <div className="text-center p-3 bg-muted/50 rounded-lg">
-                            <span className="text-2xl">🥈</span>
-                            <p className="text-xs text-muted-foreground mt-1">2º Lugar</p>
-                            <p className="font-bold">{formatCurrency(Number(tournament.prize_2nd))}</p>
+                          <div className="text-center p-2 sm:p-3 bg-muted/50 rounded-lg">
+                            <span className="text-xl sm:text-2xl">🥈</span>
+                            <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">2º Lugar</p>
+                            <p className="font-bold text-xs sm:text-sm">{formatCurrency(Number(tournament.prize_2nd))}</p>
                           </div>
                         )}
                         {tournament.prize_3rd != null && tournament.prize_3rd > 0 && (
-                          <div className="text-center p-3 bg-muted/50 rounded-lg">
-                            <span className="text-2xl">🥉</span>
-                            <p className="text-xs text-muted-foreground mt-1">3º Lugar</p>
-                            <p className="font-bold">{formatCurrency(Number(tournament.prize_3rd))}</p>
+                          <div className="text-center p-2 sm:p-3 bg-muted/50 rounded-lg">
+                            <span className="text-xl sm:text-2xl">🥉</span>
+                            <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">3º Lugar</p>
+                            <p className="font-bold text-xs sm:text-sm">{formatCurrency(Number(tournament.prize_3rd))}</p>
                           </div>
                         )}
                         {tournament.prize_mvp != null && tournament.prize_mvp > 0 && (
-                          <div className="text-center p-3 bg-muted/50 rounded-lg">
-                            <span className="text-2xl">🎯</span>
-                            <p className="text-xs text-muted-foreground mt-1">MVP (+Kills)</p>
-                            <p className="font-bold text-amber-500">{formatCurrency(Number(tournament.prize_mvp))}</p>
+                          <div className="text-center p-2 sm:p-3 bg-muted/50 rounded-lg">
+                            <span className="text-xl sm:text-2xl">🎯</span>
+                            <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">MVP (+Kills)</p>
+                            <p className="font-bold text-xs sm:text-sm text-amber-500">{formatCurrency(Number(tournament.prize_mvp))}</p>
                           </div>
                         )}
                         {/* Fallback if no prizes configured */}
                         {(!tournament.prize_1st && !tournament.prize_2nd && !tournament.prize_3rd && !tournament.prize_mvp) && (
                           <div className="col-span-full text-center">
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-xs sm:text-sm text-muted-foreground">
                               Premiação total: {formatCurrency(Number(tournament.prize_pool))}
                             </p>
                           </div>
@@ -573,22 +573,22 @@ export default function TournamentPage() {
                     </div>
 
                     {/* Rules */}
-                    <div className="bg-card border border-border rounded-xl p-6">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-destructive/10 rounded-lg flex items-center justify-center">
-                          <Shield className="text-destructive" size={20} />
+                    <div className="bg-card border border-border rounded-xl p-4 sm:p-6">
+                      <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-destructive/10 rounded-lg flex items-center justify-center">
+                          <Shield className="text-destructive" size={18} />
                         </div>
-                        <h4 className="font-display font-bold">Regras do Torneio</h4>
+                        <h4 className="font-display font-bold text-sm sm:text-base">Regras do Torneio</h4>
                       </div>
                       <ul className="space-y-2">
                         {parseRules(tournament.rules).map((rule, index) => (
                           <li
                             key={index}
-                            className="flex items-start gap-2 text-sm text-muted-foreground"
+                            className="flex items-start gap-2 text-xs sm:text-sm text-muted-foreground"
                           >
                             <AlertTriangle
-                              size={14}
-                              className="text-destructive shrink-0 mt-0.5"
+                              size={12}
+                              className="text-destructive shrink-0 mt-0.5 sm:w-3.5 sm:h-3.5"
                             />
                             <span>{rule}</span>
                           </li>
@@ -597,12 +597,12 @@ export default function TournamentPage() {
                     </div>
 
                     {/* Requirements */}
-                    <div className="bg-card border border-border rounded-xl p-6">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                          <Target className="text-primary" size={20} />
+                    <div className="bg-card border border-border rounded-xl p-4 sm:p-6">
+                      <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                          <Target className="text-primary" size={18} />
                         </div>
-                        <h4 className="font-display font-bold">
+                        <h4 className="font-display font-bold text-sm sm:text-base">
                           Requisitos para Participar
                         </h4>
                       </div>
@@ -610,11 +610,11 @@ export default function TournamentPage() {
                         {defaultRequirements.map((req, index) => (
                           <li
                             key={index}
-                            className="flex items-start gap-2 text-sm text-muted-foreground"
+                            className="flex items-start gap-2 text-xs sm:text-sm text-muted-foreground"
                           >
                             <CheckCircle2
-                              size={14}
-                              className="text-primary shrink-0 mt-0.5"
+                              size={12}
+                              className="text-primary shrink-0 mt-0.5 sm:w-3.5 sm:h-3.5"
                             />
                             <span>{req}</span>
                           </li>
@@ -625,14 +625,14 @@ export default function TournamentPage() {
                     {/* Buy Button */}
                     <Button
                       size="lg"
-                      className="w-full gap-2"
+                      className="w-full gap-2 text-sm sm:text-base touch-manipulation"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleBuyTicket(tournament);
                       }}
                       disabled={spotsLeft <= 0 || tournament.status !== "open"}
                     >
-                      <Ticket size={18} />
+                      <Ticket size={16} className="sm:w-[18px] sm:h-[18px]" />
                       {spotsLeft <= 0
                         ? "Esgotado"
                         : tournament.status !== "open"
