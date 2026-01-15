@@ -10,6 +10,7 @@ import {
   CheckCircle,
   XCircle,
   Eye,
+  Printer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { TicketSheet } from "@/components/TicketSheet";
 
 interface PromoCode {
   id: string;
@@ -58,11 +60,25 @@ interface CodeUseDetail {
   id: string;
   user_id: string;
   tournament_id: string;
+  participation_id?: string;
   created_at: string;
   user_nick?: string;
   user_game_id?: string;
   tournament_name?: string;
+  tournament_game?: string;
+  tournament_game_mode?: string;
+  tournament_date?: string;
   slot_number?: number | null;
+  unique_token?: string;
+  player_name?: string;
+  player_cpf?: string;
+  player_whatsapp?: string;
+  partner_nick?: string;
+  partner_game_id?: string;
+  partner_2_nick?: string;
+  partner_2_game_id?: string;
+  partner_3_nick?: string;
+  partner_3_game_id?: string;
 }
 
 export function PromoCodesTab() {
@@ -77,6 +93,7 @@ export function PromoCodesTab() {
   const [viewingUsesCode, setViewingUsesCode] = useState<PromoCode | null>(null);
   const [codeUses, setCodeUses] = useState<CodeUseDetail[]>([]);
   const [isLoadingUses, setIsLoadingUses] = useState(false);
+  const [ticketToView, setTicketToView] = useState<CodeUseDetail | null>(null);
 
   useEffect(() => {
     fetchCodes();
@@ -167,34 +184,67 @@ export function PromoCodesTab() {
         return;
       }
 
-      // Get tournament names
+      // Get tournament details
       const tournamentIds = [...new Set(usesData.map(u => u.tournament_id))];
       const { data: tournamentsData } = await supabase
         .from("tournaments")
-        .select("id, name")
+        .select("id, name, game, game_mode, start_date")
         .in("id", tournamentIds);
 
       const tournamentMap = new Map(
-        tournamentsData?.map(t => [t.id, t.name]) || []
+        tournamentsData?.map(t => [t.id, { 
+          name: t.name, 
+          game: t.game, 
+          game_mode: t.game_mode,
+          start_date: t.start_date 
+        }]) || []
       );
 
-      // Get participation details (nick, game_id, slot)
+      // Get participation details (nick, game_id, slot, token, etc.)
       const participationIds = usesData
         .map(u => u.participation_id)
         .filter(Boolean) as string[];
 
-      let participationMap = new Map<string, { nick: string; game_id: string; slot: number | null }>();
+      let participationMap = new Map<string, {
+        nick: string;
+        game_id: string;
+        slot: number | null;
+        token: string;
+        full_name: string;
+        cpf: string;
+        whatsapp: string;
+        partner_nick: string;
+        partner_game_id: string;
+        partner_2_nick: string;
+        partner_2_game_id: string;
+        partner_3_nick: string;
+        partner_3_game_id: string;
+      }>();
       
       if (participationIds.length > 0) {
         const { data: participationsData } = await supabase
           .from("participations")
-          .select("id, player_nick, player_game_id, slot_number")
+          .select("id, player_nick, player_game_id, slot_number, unique_token, full_name, cpf, whatsapp, partner_nick, partner_game_id, partner_2_nick, partner_2_game_id, partner_3_nick, partner_3_game_id")
           .in("id", participationIds);
 
         participationMap = new Map(
           participationsData?.map(p => [
             p.id,
-            { nick: p.player_nick || "", game_id: p.player_game_id || "", slot: p.slot_number }
+            { 
+              nick: p.player_nick || "", 
+              game_id: p.player_game_id || "", 
+              slot: p.slot_number,
+              token: p.unique_token || "",
+              full_name: p.full_name || "",
+              cpf: p.cpf || "",
+              whatsapp: p.whatsapp || "",
+              partner_nick: p.partner_nick || "",
+              partner_game_id: p.partner_game_id || "",
+              partner_2_nick: p.partner_2_nick || "",
+              partner_2_game_id: p.partner_2_game_id || "",
+              partner_3_nick: p.partner_3_nick || "",
+              partner_3_game_id: p.partner_3_game_id || "",
+            }
           ]) || []
         );
       }
@@ -202,15 +252,30 @@ export function PromoCodesTab() {
       // Build detailed uses list
       const detailedUses: CodeUseDetail[] = usesData.map(use => {
         const participation = use.participation_id ? participationMap.get(use.participation_id) : null;
+        const tournament = tournamentMap.get(use.tournament_id);
         return {
           id: use.id,
           user_id: use.user_id,
           tournament_id: use.tournament_id,
+          participation_id: use.participation_id || undefined,
           created_at: use.created_at,
           user_nick: participation?.nick || "N/A",
           user_game_id: participation?.game_id || "N/A",
-          tournament_name: tournamentMap.get(use.tournament_id) || "Desconhecido",
+          tournament_name: tournament?.name || "Desconhecido",
+          tournament_game: tournament?.game || "",
+          tournament_game_mode: tournament?.game_mode || "",
+          tournament_date: tournament?.start_date || "",
           slot_number: participation?.slot || null,
+          unique_token: participation?.token || "",
+          player_name: participation?.full_name || "",
+          player_cpf: participation?.cpf || "",
+          player_whatsapp: participation?.whatsapp || "",
+          partner_nick: participation?.partner_nick || "",
+          partner_game_id: participation?.partner_game_id || "",
+          partner_2_nick: participation?.partner_2_nick || "",
+          partner_2_game_id: participation?.partner_2_game_id || "",
+          partner_3_nick: participation?.partner_3_nick || "",
+          partner_3_game_id: participation?.partner_3_game_id || "",
         };
       });
 
@@ -566,10 +631,11 @@ export function PromoCodesTab() {
                   <thead className="sticky top-0 bg-card z-10">
                     <tr className="border-b border-border bg-muted/50">
                       <th className="text-left p-3 font-medium text-muted-foreground text-sm">Nick</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground text-sm">ID do Jogo</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground text-sm">ID</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground text-sm">Token</th>
                       <th className="text-left p-3 font-medium text-muted-foreground text-sm">Torneio</th>
                       <th className="text-center p-3 font-medium text-muted-foreground text-sm">Slot</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground text-sm">Data</th>
+                      <th className="text-center p-3 font-medium text-muted-foreground text-sm">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -583,10 +649,21 @@ export function PromoCodesTab() {
                             {use.user_game_id}
                           </code>
                         </td>
+                        <td className="p-3">
+                          {use.unique_token ? (
+                            <code className="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs font-mono font-bold">
+                              {use.unique_token}
+                            </code>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">-</span>
+                          )}
+                        </td>
                         <td className="p-3 text-sm">
                           <div className="flex items-center gap-1.5">
                             <Trophy size={14} className="text-primary" />
-                            {use.tournament_name}
+                            <span className="truncate max-w-[120px]" title={use.tournament_name}>
+                              {use.tournament_name}
+                            </span>
                           </div>
                         </td>
                         <td className="p-3 text-center">
@@ -598,14 +675,20 @@ export function PromoCodesTab() {
                             <span className="text-muted-foreground text-sm">-</span>
                           )}
                         </td>
-                        <td className="p-3 text-sm text-muted-foreground">
-                          {new Date(use.created_at).toLocaleString("pt-BR", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "2-digit",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                        <td className="p-3 text-center">
+                          {use.unique_token && use.participation_id ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => setTicketToView(use)}
+                              title="Ver/Imprimir Ingresso"
+                            >
+                              <Printer size={16} />
+                            </Button>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">-</span>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -621,6 +704,33 @@ export function PromoCodesTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Ticket Sheet Modal */}
+      {ticketToView && (
+        <TicketSheet
+          isOpen={!!ticketToView}
+          onClose={() => setTicketToView(null)}
+          ticket={{
+            uniqueToken: ticketToView.unique_token || "",
+            slotNumber: ticketToView.slot_number || null,
+            tournamentName: ticketToView.tournament_name || "",
+            tournamentGame: ticketToView.tournament_game || "",
+            tournamentGameMode: ticketToView.tournament_game_mode || "",
+            tournamentDate: ticketToView.tournament_date || "",
+            playerName: ticketToView.player_name || "",
+            playerNick: ticketToView.user_nick,
+            playerGameId: ticketToView.user_game_id,
+            playerCpf: ticketToView.player_cpf,
+            playerWhatsapp: ticketToView.player_whatsapp,
+            partnerNick: ticketToView.partner_nick,
+            partnerGameId: ticketToView.partner_game_id,
+            partner2Nick: ticketToView.partner_2_nick,
+            partner2GameId: ticketToView.partner_2_game_id,
+            partner3Nick: ticketToView.partner_3_nick,
+            partner3GameId: ticketToView.partner_3_game_id,
+          }}
+        />
+      )}
     </div>
   );
 }
