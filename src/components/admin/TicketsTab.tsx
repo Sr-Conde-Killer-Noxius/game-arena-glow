@@ -68,6 +68,68 @@ export function TicketsTab() {
 
   const confirmPayment = async (participationId: string) => {
     try {
+      // First fetch participation and tournament details to calculate slot
+      const { data: participation, error: fetchError } = await supabase
+        .from("participations")
+        .select("tournament_id")
+        .eq("id", participationId)
+        .single();
+
+      if (fetchError || !participation) {
+        throw new Error("Participação não encontrada");
+      }
+
+      // Fetch tournament details for slot calculation
+      const { data: tournament, error: tournamentError } = await supabase
+        .from("tournaments")
+        .select("game_mode, max_participants")
+        .eq("id", participation.tournament_id)
+        .single();
+
+      if (tournamentError) {
+        throw new Error("Torneio não encontrado");
+      }
+
+      // Calculate slot number
+      const getPlayersPerSlot = (mode: string) => {
+        switch (mode) {
+          case "dupla": return 2;
+          case "trio": return 3;
+          case "squad": return 4;
+          default: return 1;
+        }
+      };
+
+      const playersPerSlot = getPlayersPerSlot(tournament.game_mode || "solo");
+      const totalSlots = Math.floor((tournament.max_participants || 100) / playersPerSlot);
+
+      // Get used slots
+      const { data: usedSlots } = await supabase
+        .from("participations")
+        .select("slot_number")
+        .eq("tournament_id", participation.tournament_id)
+        .eq("payment_status", "paid")
+        .not("slot_number", "is", null);
+
+      const usedSlotNumbers = new Set<number>(
+        (usedSlots || []).map((p) => p.slot_number).filter(Boolean)
+      );
+
+      // Find first available slot
+      let slotNumber: number | null = null;
+      for (let slot = 1; slot <= totalSlots; slot++) {
+        if (!usedSlotNumbers.has(slot)) {
+          slotNumber = slot;
+          break;
+        }
+      }
+
+      if (slotNumber === null) {
+        toast.error("Torneio lotado! Não há slots disponíveis.");
+        return;
+      }
+
+      // Generate unique token
       const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
       let randomPart = "";
       for (let i = 0; i < 5; i++) {
@@ -75,16 +137,18 @@ export function TicketsTab() {
       }
       const uniqueToken = `JPG-FF-${randomPart}`;
 
+      // Update with token AND slot
       const { error } = await supabase
         .from("participations")
         .update({
           payment_status: "paid",
           unique_token: uniqueToken,
+          slot_number: slotNumber,
         })
         .eq("id", participationId);
 
       if (error) throw error;
-      toast.success("Pagamento confirmado!");
+      toast.success(`Pagamento confirmado! Slot #${slotNumber} atribuído.`);
       fetchParticipations();
     } catch (err) {
       console.error("Error confirming payment:", err);
