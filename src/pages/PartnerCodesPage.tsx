@@ -99,14 +99,16 @@ export default function PartnerCodesPage() {
       if (tournamentsError) throw tournamentsError;
       setTournaments(tournamentsData || []);
 
-      // Fetch partner settings
+      // Fetch partner settings (admins get unlimited codes by default)
       const { data: settingsData } = await supabase
         .from("partner_settings")
         .select("max_codes")
         .eq("user_id", user.id)
         .maybeSingle();
 
-      setSettings(settingsData || { max_codes: 5 });
+      // Admins get 999 codes if no specific setting, partners get 5
+      const defaultMaxCodes = isAdmin ? 999 : 5;
+      setSettings(settingsData || { max_codes: defaultMaxCodes });
     } catch (err) {
       console.error("Error fetching data:", err);
       toast.error("Erro ao carregar dados");

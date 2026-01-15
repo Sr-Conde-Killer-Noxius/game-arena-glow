@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Users, User, Info, AlertCircle, Copy, CheckCircle2, Clock, QrCode, FileText, Gamepad2 } from "lucide-react";
+import { X, Users, User, Info, AlertCircle, Copy, CheckCircle2, Clock, QrCode, FileText, Gamepad2, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,6 +62,12 @@ export function TicketPurchaseModal({
   const [uniqueToken, setUniqueToken] = useState<string | null>(null);
   const [slotNumber, setSlotNumber] = useState<number | null>(null);
   const [isTicketSheetOpen, setIsTicketSheetOpen] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [isValidatingPromo, setIsValidatingPromo] = useState(false);
+  const [validatedPromo, setValidatedPromo] = useState<{
+    promo_code_id: string;
+    partner_id: string;
+  } | null>(null);
   const [formData, setFormData] = useState<FormData>({
     fullName: "",
     cpf: "",
@@ -82,6 +88,8 @@ export function TicketPurchaseModal({
     discordProfile: null,
   });
 
+  // Calculate actual price (0 if promo code is valid)
+  const actualPrice = validatedPromo ? 0 : entryFee;
   const price = entryFee;
   const prizeShare = (price * 0.7).toFixed(2);
   const organizationShare = (price * 0.3).toFixed(2);
@@ -214,6 +222,52 @@ export function TicketPurchaseModal({
       .replace(/(\d{2})(\d)/, "($1) $2")
       .replace(/(\d{5})(\d)/, "$1-$2")
       .slice(0, 15);
+  };
+
+  const validatePromoCode = async () => {
+    if (!promoCode.trim()) return;
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error("Você precisa estar logado para usar um código promocional");
+      return;
+    }
+
+    setIsValidatingPromo(true);
+    try {
+      const { data, error } = await supabase.rpc("validate_promo_code", {
+        _code: promoCode.trim(),
+        _tournament_id: tournamentId,
+        _user_id: user.id,
+      });
+
+      if (error) throw error;
+
+      const result = data as { valid: boolean; error?: string; promo_code_id?: string; partner_id?: string };
+
+      if (!result.valid) {
+        toast.error(result.error || "Código inválido");
+        setValidatedPromo(null);
+        return;
+      }
+
+      setValidatedPromo({
+        promo_code_id: result.promo_code_id!,
+        partner_id: result.partner_id!,
+      });
+      toast.success("Código promocional aplicado! Entrada gratuita.");
+    } catch (err) {
+      console.error("Error validating promo code:", err);
+      toast.error("Erro ao validar código");
+      setValidatedPromo(null);
+    } finally {
+      setIsValidatingPromo(false);
+    }
+  };
+
+  const removePromoCode = () => {
+    setPromoCode("");
+    setValidatedPromo(null);
   };
 
   const uploadFile = async (file: File, userId: string, fieldName: string): Promise<string | null> => {
@@ -392,6 +446,46 @@ export function TicketPurchaseModal({
 
       setParticipationId(currentParticipationId!);
 
+      // If promo code is applied, skip payment and mark as paid
+      if (validatedPromo) {
+        // Redeem the promo code
+        const { data: redeemResult, error: redeemError } = await supabase.rpc("redeem_promo_code", {
+          _promo_code_id: validatedPromo.promo_code_id,
+          _tournament_id: tournamentId,
+          _user_id: user.id,
+          _participation_id: currentParticipationId,
+        });
+
+        if (redeemError || !redeemResult) {
+          console.error("Error redeeming promo code:", redeemError);
+          toast.error("Erro ao resgatar código promocional. Tente novamente.");
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Update participation to paid status
+        const { data: updatedParticipation, error: updateError } = await supabase
+          .from("participations")
+          .update({ payment_status: "paid" })
+          .eq("id", currentParticipationId)
+          .select("unique_token, slot_number")
+          .single();
+
+        if (updateError) {
+          console.error("Error updating participation:", updateError);
+          toast.error("Erro ao confirmar inscrição. Tente novamente.");
+          setIsSubmitting(false);
+          return;
+        }
+
+        setUniqueToken(updatedParticipation.unique_token);
+        setSlotNumber(updatedParticipation.slot_number);
+        setStep("success");
+        toast.success("Inscrição gratuita confirmada!");
+        setIsSubmitting(false);
+        return;
+      }
+
       // Create PIX payment
       const { data: paymentData, error: paymentError } = await supabase.functions.invoke(
         "create-pix-payment",
@@ -441,6 +535,8 @@ export function TicketPurchaseModal({
     setSlotNumber(null);
     setParticipationId(null);
     setIsTicketSheetOpen(false);
+    setPromoCode("");
+    setValidatedPromo(null);
     setFormData({
       fullName: "",
       cpf: "",
@@ -538,6 +634,56 @@ export function TicketPurchaseModal({
                   </p>
                 </div>
               </div>
+            </div>
+
+            {/* Promo Code Section */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Gift size={18} className="text-primary" />
+                <Label>Código Promocional (opcional)</Label>
+              </div>
+              
+              {validatedPromo ? (
+                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="text-green-500" size={18} />
+                      <span className="text-green-500 font-medium">
+                        Código aplicado: <code className="bg-green-500/20 px-2 py-0.5 rounded">{promoCode}</code>
+                      </span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={removePromoCode}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      Remover
+                    </Button>
+                  </div>
+                  <p className="text-sm text-green-500/80 mt-2">
+                    🎉 Entrada gratuita! Você não precisará pagar.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Digite seu código..."
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value.toLowerCase())}
+                    className="font-mono"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={validatePromoCode}
+                    disabled={!promoCode.trim() || isValidatingPromo}
+                  >
+                    {isValidatingPromo ? "Validando..." : "Aplicar"}
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Personal Data */}
@@ -854,9 +1000,22 @@ export function TicketPurchaseModal({
             <div className="pt-4 border-t border-border">
               <div className="flex items-center justify-between mb-4">
                 <span className="text-muted-foreground">Total:</span>
-                <span className="font-display text-2xl font-bold text-primary">
-                  R$ {price.toFixed(2).replace(".", ",")}
-                </span>
+                <div className="text-right">
+                  {validatedPromo ? (
+                    <>
+                      <span className="font-display text-lg text-muted-foreground line-through mr-2">
+                        R$ {price.toFixed(2).replace(".", ",")}
+                      </span>
+                      <span className="font-display text-2xl font-bold text-green-500">
+                        GRÁTIS
+                      </span>
+                    </>
+                  ) : (
+                    <span className="font-display text-2xl font-bold text-primary">
+                      R$ {price.toFixed(2).replace(".", ",")}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <Button
@@ -869,8 +1028,10 @@ export function TicketPurchaseModal({
                 {isSubmitting ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                    <span>Gerando PIX...</span>
+                    <span>{validatedPromo ? "Confirmando..." : "Gerando PIX..."}</span>
                   </div>
+                ) : validatedPromo ? (
+                  "Confirmar Inscrição Gratuita"
                 ) : (
                   `Pagar com PIX - R$ ${price.toFixed(2).replace(".", ",")}`
                 )}
