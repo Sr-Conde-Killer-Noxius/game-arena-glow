@@ -10,6 +10,7 @@ import {
   Ticket,
   Shield,
   Play,
+  Gift,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ const menuItems = [
   { icon: Gamepad2, label: "Jogos", path: "/dashboard", active: true },
   { icon: Ticket, label: "Meus Ingressos", path: "/my-tickets", active: true },
   { icon: Play, label: "Entrar na Play", path: "/entrar-na-play", active: true },
+  { icon: Gift, label: "Gerar Códigos", path: "/partner-codes", active: true, partnerOnly: true },
   { icon: Shield, label: "Admin", path: "/admin", active: true, adminOnly: true },
   { icon: Trophy, label: "Cups - Liga", path: "/tournaments", active: false },
   { icon: BarChart3, label: "Ranking", path: "/ranking", active: false },
@@ -33,10 +35,14 @@ const menuItems = [
 
 export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const location = useLocation();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isPartner } = useAuth();
 
-  // Filter menu items based on admin status
-  const visibleMenuItems = menuItems.filter(item => !item.adminOnly || isAdmin);
+  // Filter menu items based on admin and partner status
+  const visibleMenuItems = menuItems.filter(item => {
+    if (item.adminOnly && !isAdmin) return false;
+    if (item.partnerOnly && !isPartner && !isAdmin) return false;
+    return true;
+  });
 
   return (
     <>

@@ -116,6 +116,30 @@ export type Database = {
           },
         ]
       }
+      partner_settings: {
+        Row: {
+          created_at: string
+          id: string
+          max_codes: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          max_codes?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          max_codes?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -164,6 +188,124 @@ export type Database = {
           updated_at?: string
           username?: string | null
           whatsapp?: string | null
+        }
+        Relationships: []
+      }
+      promo_code_tournaments: {
+        Row: {
+          created_at: string
+          id: string
+          promo_code_id: string
+          tournament_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          promo_code_id: string
+          tournament_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          promo_code_id?: string
+          tournament_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promo_code_tournaments_promo_code_id_fkey"
+            columns: ["promo_code_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promo_code_tournaments_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      promo_code_uses: {
+        Row: {
+          created_at: string
+          id: string
+          participation_id: string | null
+          promo_code_id: string
+          tournament_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          participation_id?: string | null
+          promo_code_id: string
+          tournament_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          participation_id?: string | null
+          promo_code_id?: string
+          tournament_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promo_code_uses_participation_id_fkey"
+            columns: ["participation_id"]
+            isOneToOne: false
+            referencedRelation: "participations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promo_code_uses_promo_code_id_fkey"
+            columns: ["promo_code_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promo_code_uses_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      promo_codes: {
+        Row: {
+          code: string
+          created_at: string
+          current_uses: number
+          id: string
+          is_active: boolean
+          max_uses: number
+          partner_id: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          current_uses?: number
+          id?: string
+          is_active?: boolean
+          max_uses?: number
+          partner_id: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          current_uses?: number
+          id?: string
+          is_active?: boolean
+          max_uses?: number
+          partner_id?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -409,6 +551,20 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      is_partner: { Args: { _user_id: string }; Returns: boolean }
+      redeem_promo_code: {
+        Args: {
+          _participation_id: string
+          _promo_code_id: string
+          _tournament_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      validate_promo_code: {
+        Args: { _code: string; _tournament_id: string; _user_id: string }
+        Returns: Json
       }
     }
     Enums: {
