@@ -8,6 +8,7 @@ import {
   Ticket,
   Settings,
   Webhook,
+  Gift,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,8 +20,9 @@ import { UsersTab } from "@/components/admin/UsersTab";
 import { TicketsTab } from "@/components/admin/TicketsTab";
 import { IntegrationsTab } from "@/components/admin/IntegrationsTab";
 import { WebhooksTab } from "@/components/admin/WebhooksTab";
+import { PromoCodesTab } from "@/components/admin/PromoCodesTab";
 
-type Tab = "dashboard" | "tournaments" | "users" | "tickets" | "integrations" | "webhooks";
+type Tab = "dashboard" | "tournaments" | "users" | "tickets" | "integrations" | "webhooks" | "promo-codes";
 
 interface RevenueData {
   totalRevenue: number;
@@ -180,6 +182,13 @@ export default function AdminPage() {
           <Webhook size={18} />
           Webhooks
         </Button>
+        <Button
+          variant={activeTab === "promo-codes" ? "default" : "outline"}
+          onClick={() => setActiveTab("promo-codes")}
+        >
+          <Gift size={18} />
+          Códigos Promo
+        </Button>
       </div>
 
       {/* Content */}
@@ -255,6 +264,7 @@ export default function AdminPage() {
       {activeTab === "users" && <UsersTab />}
       {activeTab === "integrations" && <IntegrationsTab />}
       {activeTab === "webhooks" && <WebhooksTab />}
+      {activeTab === "promo-codes" && <PromoCodesTab />}
     </div>
   );
 }

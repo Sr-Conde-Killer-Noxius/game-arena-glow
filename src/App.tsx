@@ -15,6 +15,7 @@ import MyTicketsPage from "./pages/MyTicketsPage";
 import EntrarNaPlayPage from "./pages/EntrarNaPlayPage";
 import ProfilePage from "./pages/ProfilePage";
 import AdminPage from "./pages/AdminPage";
+import PartnerCodesPage from "./pages/PartnerCodesPage";
 import { DashboardLayout } from "./components/DashboardLayout";
 import NotFound from "./pages/NotFound";
 
@@ -44,6 +45,7 @@ const App = () => (
               <Route path="/my-tickets" element={<MyTicketsPage />} />
               <Route path="/entrar-na-play" element={<EntrarNaPlayPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/partner-codes" element={<PartnerCodesPage />} />
               <Route path="/admin" element={<AdminPage />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

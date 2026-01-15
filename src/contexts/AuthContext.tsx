@@ -19,6 +19,7 @@ interface AuthContextType {
   profile: Profile | null;
   isLoading: boolean;
   isAdmin: boolean;
+  isPartner: boolean;
   signUp: (email: string, password: string, username?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -33,19 +34,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isPartner, setIsPartner] = useState(false);
 
-  const checkAdminStatus = async (userId: string) => {
+  const checkRoles = async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", userId)
-        .eq("role", "admin")
-        .maybeSingle();
+        .eq("user_id", userId);
 
-      setIsAdmin(!error && data !== null);
+      if (error || !data) {
+        setIsAdmin(false);
+        setIsPartner(false);
+        return;
+      }
+
+      setIsAdmin(data.some(r => r.role === "admin"));
+      setIsPartner(data.some(r => r.role === "parceiro"));
     } catch {
       setIsAdmin(false);
+      setIsPartner(false);
     }
   };
 
@@ -82,11 +90,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           // Use setTimeout to avoid potential race conditions with Supabase
           setTimeout(() => {
-            checkAdminStatus(session.user.id);
+            checkRoles(session.user.id);
             fetchProfile(session.user.id);
           }, 0);
         } else {
           setIsAdmin(false);
+          setIsPartner(false);
           setProfile(null);
         }
       }
@@ -99,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
       
       if (session?.user) {
-        checkAdminStatus(session.user.id);
+        checkRoles(session.user.id);
         fetchProfile(session.user.id);
       }
     });
@@ -162,6 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     setIsAdmin(false);
+    setIsPartner(false);
     setProfile(null);
     await supabase.auth.signOut();
   };
@@ -174,6 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         isLoading,
         isAdmin,
+        isPartner,
         signUp,
         signIn,
         signOut,
