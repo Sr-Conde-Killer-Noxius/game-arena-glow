@@ -429,50 +429,55 @@ export default function PartnerCodesPage() {
               </p>
             </div>
 
-            <div className="space-y-2">
-              <Label>Máximo de Usos</Label>
-              <Select value={newCodeMaxUses} onValueChange={setNewCodeMaxUses}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="5">5 usos</SelectItem>
-                  <SelectItem value="10">10 usos</SelectItem>
-                  <SelectItem value="20">20 usos</SelectItem>
-                  <SelectItem value="50">50 usos</SelectItem>
-                  <SelectItem value="100">100 usos</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Opções avançadas apenas para admins */}
+            {isAdmin && (
+              <>
+                <div className="space-y-2">
+                  <Label>Máximo de Usos</Label>
+                  <Select value={newCodeMaxUses} onValueChange={setNewCodeMaxUses}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5 usos</SelectItem>
+                      <SelectItem value="10">10 usos</SelectItem>
+                      <SelectItem value="20">20 usos</SelectItem>
+                      <SelectItem value="50">50 usos</SelectItem>
+                      <SelectItem value="100">100 usos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <div className="space-y-2">
-              <Label>Válido para (opcional)</Label>
-              <p className="text-xs text-muted-foreground mb-2">
-                Deixe vazio para funcionar em todos os torneios
-              </p>
-              <div className="max-h-40 overflow-y-auto border border-border rounded-lg p-2 space-y-1">
-                {tournaments.map((t) => (
-                  <label
-                    key={t.id}
-                    className="flex items-center gap-2 p-2 hover:bg-muted rounded cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedTournaments.includes(t.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedTournaments([...selectedTournaments, t.id]);
-                        } else {
-                          setSelectedTournaments(selectedTournaments.filter(id => id !== t.id));
-                        }
-                      }}
-                      className="rounded"
-                    />
-                    <span className="text-sm">{t.name}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
+                <div className="space-y-2">
+                  <Label>Válido para (opcional)</Label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Deixe vazio para funcionar em todos os torneios
+                  </p>
+                  <div className="max-h-40 overflow-y-auto border border-border rounded-lg p-2 space-y-1">
+                    {tournaments.map((t) => (
+                      <label
+                        key={t.id}
+                        className="flex items-center gap-2 p-2 hover:bg-muted rounded cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedTournaments.includes(t.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedTournaments([...selectedTournaments, t.id]);
+                            } else {
+                              setSelectedTournaments(selectedTournaments.filter(id => id !== t.id));
+                            }
+                          }}
+                          className="rounded"
+                        />
+                        <span className="text-sm">{t.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
