@@ -218,14 +218,33 @@ export function UsersTab() {
     if (!partnerSettingsDialog) return;
 
     try {
-      const { error } = await supabase
+      // First check if record exists
+      const { data: existingSettings } = await supabase
         .from("partner_settings")
-        .upsert({
-          user_id: partnerSettingsDialog.id,
-          max_codes: parseInt(newMaxCodes) || 5,
-        });
+        .select("id")
+        .eq("user_id", partnerSettingsDialog.id)
+        .maybeSingle();
 
-      if (error) throw error;
+      if (existingSettings) {
+        // Update existing record
+        const { error } = await supabase
+          .from("partner_settings")
+          .update({ max_codes: parseInt(newMaxCodes) || 5 })
+          .eq("user_id", partnerSettingsDialog.id);
+
+        if (error) throw error;
+      } else {
+        // Insert new record
+        const { error } = await supabase
+          .from("partner_settings")
+          .insert({
+            user_id: partnerSettingsDialog.id,
+            max_codes: parseInt(newMaxCodes) || 5,
+          });
+
+        if (error) throw error;
+      }
+
       toast.success("Configurações do parceiro atualizadas!");
       setPartnerSettingsDialog(null);
       fetchPartnerSettings();
