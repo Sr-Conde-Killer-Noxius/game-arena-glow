@@ -125,6 +125,7 @@ export function UsersTab() {
   const getPartnerMaxCodes = (userId: string) => {
     const settings = partnerSettings.find(s => s.user_id === userId);
     return settings?.max_codes || 5;
+  };
 
   const toggleAdminRole = async (user: Profile) => {
     const hasAdmin = isAdmin(user.id);
