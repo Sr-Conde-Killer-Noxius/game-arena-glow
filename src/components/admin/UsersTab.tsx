@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, RefreshCw, Edit2, Ban, CheckCircle, Shield, ShieldOff, Lock, Gift, Settings } from "lucide-react";
+import { Search, RefreshCw, Edit2, Ban, CheckCircle, Shield, ShieldOff, Lock, Gift, Settings, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -63,6 +63,16 @@ export function UsersTab() {
   const [newPassword, setNewPassword] = useState("");
   const [partnerSettingsDialog, setPartnerSettingsDialog] = useState<Profile | null>(null);
   const [newMaxCodes, setNewMaxCodes] = useState("5");
+  
+  // Create user state
+  const [showCreateUserDialog, setShowCreateUserDialog] = useState(false);
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [newUserData, setNewUserData] = useState({
+    email: "",
+    password: "",
+    username: "",
+    fullName: "",
+  });
 
   useEffect(() => {
     fetchUsers();
@@ -277,6 +287,52 @@ export function UsersTab() {
     return colors[rank];
   };
 
+  const handleCreateUser = async () => {
+    if (!newUserData.email || !newUserData.password) {
+      toast.error("E-mail e senha são obrigatórios");
+      return;
+    }
+
+    if (newUserData.password.length < 6) {
+      toast.error("A senha deve ter no mínimo 6 caracteres");
+      return;
+    }
+
+    setIsCreatingUser(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-create-user", {
+        body: {
+          email: newUserData.email,
+          password: newUserData.password,
+          username: newUserData.username || null,
+          fullName: newUserData.fullName || null,
+        },
+      });
+
+      if (error) {
+        console.error("Error creating user:", error);
+        toast.error("Erro ao criar usuário");
+        return;
+      }
+
+      if (data?.error) {
+        toast.error(data.error);
+        return;
+      }
+
+      toast.success("Usuário criado com sucesso!");
+      setShowCreateUserDialog(false);
+      setNewUserData({ email: "", password: "", username: "", fullName: "" });
+      fetchUsers();
+    } catch (err) {
+      console.error("Error creating user:", err);
+      toast.error("Erro ao criar usuário");
+    } finally {
+      setIsCreatingUser(false);
+    }
+  };
+
   const filteredUsers = users.filter((u) => {
     const term = searchTerm.toLowerCase();
     return (
@@ -305,6 +361,10 @@ export function UsersTab() {
         <Button variant="outline" onClick={fetchUsers}>
           <RefreshCw size={16} className={cn(isLoading && "animate-spin")} />
           Atualizar
+        </Button>
+        <Button onClick={() => setShowCreateUserDialog(true)}>
+          <UserPlus size={16} />
+          Criar Usuário
         </Button>
       </div>
 
@@ -569,6 +629,80 @@ export function UsersTab() {
               Cancelar
             </Button>
             <Button onClick={savePartnerSettings}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create User Dialog */}
+      <Dialog open={showCreateUserDialog} onOpenChange={setShowCreateUserDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Criar Novo Usuário</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-email">
+                E-mail <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="new-email"
+                type="email"
+                placeholder="email@exemplo.com"
+                value={newUserData.email}
+                onChange={(e) => setNewUserData({ ...newUserData, email: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="new-password">
+                Senha <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="new-password"
+                type="password"
+                placeholder="Mínimo 6 caracteres"
+                value={newUserData.password}
+                onChange={(e) => setNewUserData({ ...newUserData, password: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="new-username">Username (opcional)</Label>
+              <Input
+                id="new-username"
+                placeholder="username"
+                value={newUserData.username}
+                onChange={(e) => setNewUserData({ ...newUserData, username: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="new-fullname">Nome Completo (opcional)</Label>
+              <Input
+                id="new-fullname"
+                placeholder="Nome Completo"
+                value={newUserData.fullName}
+                onChange={(e) => setNewUserData({ ...newUserData, fullName: e.target.value })}
+              />
+            </div>
+
+            <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground">
+              <p>O usuário será criado com e-mail já confirmado (sem verificação).</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCreateUserDialog(false);
+                setNewUserData({ email: "", password: "", username: "", fullName: "" });
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleCreateUser} disabled={isCreatingUser}>
+              {isCreatingUser ? "Criando..." : "Criar Usuário"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
