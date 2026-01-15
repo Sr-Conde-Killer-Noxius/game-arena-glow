@@ -9,9 +9,11 @@ import {
   Trophy,
   CheckCircle,
   XCircle,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -52,6 +54,17 @@ interface CodeTournament {
   tournament_name: string;
 }
 
+interface CodeUseDetail {
+  id: string;
+  user_id: string;
+  tournament_id: string;
+  created_at: string;
+  user_nick?: string;
+  user_game_id?: string;
+  tournament_name?: string;
+  slot_number?: number | null;
+}
+
 export function PromoCodesTab() {
   const [codes, setCodes] = useState<PromoCode[]>([]);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
@@ -61,6 +74,9 @@ export function PromoCodesTab() {
   const [newMaxUses, setNewMaxUses] = useState("");
   const [codeTournaments, setCodeTournaments] = useState<string[]>([]);
   const [viewingCodeTournaments, setViewingCodeTournaments] = useState<CodeTournament[]>([]);
+  const [viewingUsesCode, setViewingUsesCode] = useState<PromoCode | null>(null);
+  const [codeUses, setCodeUses] = useState<CodeUseDetail[]>([]);
+  const [isLoadingUses, setIsLoadingUses] = useState(false);
 
   useEffect(() => {
     fetchCodes();
@@ -128,6 +144,83 @@ export function PromoCodesTab() {
       .eq("promo_code_id", code.id);
 
     setCodeTournaments(data?.map(d => d.tournament_id) || []);
+  };
+
+  const handleViewUses = async (code: PromoCode) => {
+    setViewingUsesCode(code);
+    setIsLoadingUses(true);
+    setCodeUses([]);
+
+    try {
+      // Fetch code uses
+      const { data: usesData, error: usesError } = await supabase
+        .from("promo_code_uses")
+        .select("id, user_id, tournament_id, created_at, participation_id")
+        .eq("promo_code_id", code.id)
+        .order("created_at", { ascending: false });
+
+      if (usesError) throw usesError;
+
+      if (!usesData || usesData.length === 0) {
+        setCodeUses([]);
+        setIsLoadingUses(false);
+        return;
+      }
+
+      // Get tournament names
+      const tournamentIds = [...new Set(usesData.map(u => u.tournament_id))];
+      const { data: tournamentsData } = await supabase
+        .from("tournaments")
+        .select("id, name")
+        .in("id", tournamentIds);
+
+      const tournamentMap = new Map(
+        tournamentsData?.map(t => [t.id, t.name]) || []
+      );
+
+      // Get participation details (nick, game_id, slot)
+      const participationIds = usesData
+        .map(u => u.participation_id)
+        .filter(Boolean) as string[];
+
+      let participationMap = new Map<string, { nick: string; game_id: string; slot: number | null }>();
+      
+      if (participationIds.length > 0) {
+        const { data: participationsData } = await supabase
+          .from("participations")
+          .select("id, player_nick, player_game_id, slot_number")
+          .in("id", participationIds);
+
+        participationMap = new Map(
+          participationsData?.map(p => [
+            p.id,
+            { nick: p.player_nick || "", game_id: p.player_game_id || "", slot: p.slot_number }
+          ]) || []
+        );
+      }
+
+      // Build detailed uses list
+      const detailedUses: CodeUseDetail[] = usesData.map(use => {
+        const participation = use.participation_id ? participationMap.get(use.participation_id) : null;
+        return {
+          id: use.id,
+          user_id: use.user_id,
+          tournament_id: use.tournament_id,
+          created_at: use.created_at,
+          user_nick: participation?.nick || "N/A",
+          user_game_id: participation?.game_id || "N/A",
+          tournament_name: tournamentMap.get(use.tournament_id) || "Desconhecido",
+          slot_number: participation?.slot || null,
+        };
+      });
+
+      setCodeUses(detailedUses);
+    } catch (err) {
+      console.error("Error fetching code uses:", err);
+      toast.error("Erro ao carregar usos do código");
+    } finally {
+      setIsLoadingUses(false);
+    }
   };
 
   const saveCodeChanges = async () => {
@@ -342,6 +435,15 @@ export function PromoCodesTab() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
+                          onClick={() => handleViewUses(code)}
+                          title="Ver Usos"
+                        >
+                          <Eye size={16} />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
                           onClick={() => handleEditCode(code)}
                           title="Editar"
                         >
@@ -426,6 +528,96 @@ export function PromoCodesTab() {
               Cancelar
             </Button>
             <Button onClick={saveCodeChanges}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Uses Dialog */}
+      <Dialog open={!!viewingUsesCode} onOpenChange={() => setViewingUsesCode(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye size={20} />
+              Usos do Código: <code className="bg-muted px-2 py-1 rounded font-mono">{viewingUsesCode?.code}</code>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm text-muted-foreground">
+                Parceiro: <span className="font-medium text-foreground">{viewingUsesCode?.partner_name}</span>
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Total: <span className="font-medium text-foreground">{viewingUsesCode?.current_uses} / {viewingUsesCode?.max_uses}</span>
+              </p>
+            </div>
+
+            {isLoadingUses ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+              </div>
+            ) : codeUses.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Gift className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>Nenhum uso registrado para este código</p>
+              </div>
+            ) : (
+              <ScrollArea className="h-[400px] rounded-lg border border-border">
+                <table className="w-full">
+                  <thead className="sticky top-0 bg-card z-10">
+                    <tr className="border-b border-border bg-muted/50">
+                      <th className="text-left p-3 font-medium text-muted-foreground text-sm">Nick</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground text-sm">ID do Jogo</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground text-sm">Torneio</th>
+                      <th className="text-center p-3 font-medium text-muted-foreground text-sm">Slot</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground text-sm">Data</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {codeUses.map((use) => (
+                      <tr key={use.id} className="border-b border-border/50 hover:bg-muted/30">
+                        <td className="p-3">
+                          <span className="font-medium">{use.user_nick}</span>
+                        </td>
+                        <td className="p-3">
+                          <code className="bg-muted px-2 py-0.5 rounded text-xs font-mono">
+                            {use.user_game_id}
+                          </code>
+                        </td>
+                        <td className="p-3 text-sm">
+                          <div className="flex items-center gap-1.5">
+                            <Trophy size={14} className="text-primary" />
+                            {use.tournament_name}
+                          </div>
+                        </td>
+                        <td className="p-3 text-center">
+                          {use.slot_number ? (
+                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-sm">
+                              {use.slot_number}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">-</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-sm text-muted-foreground">
+                          {new Date(use.created_at).toLocaleString("pt-BR", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </ScrollArea>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewingUsesCode(null)}>
+              Fechar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
