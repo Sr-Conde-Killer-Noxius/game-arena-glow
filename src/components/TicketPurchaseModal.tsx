@@ -446,27 +446,49 @@ export function TicketPurchaseModal({
 
       setParticipationId(currentParticipationId!);
 
-      // If promo code is applied, skip payment and mark as paid
-      if (validatedPromo) {
-        // Redeem the promo code
-        const { data: redeemResult, error: redeemError } = await supabase.rpc("redeem_promo_code", {
-          _promo_code_id: validatedPromo.promo_code_id,
-          _tournament_id: tournamentId,
-          _user_id: user.id,
-          _participation_id: currentParticipationId,
-        });
+      // Helper function to calculate slot number
+      const calculateSlotNumber = async (): Promise<number> => {
+        // Get count of paid participations for this tournament
+        const { count } = await supabase
+          .from("participations")
+          .select("id", { count: "exact", head: true })
+          .eq("tournament_id", tournamentId)
+          .eq("payment_status", "paid");
 
-        if (redeemError || !redeemResult) {
-          console.error("Error redeeming promo code:", redeemError);
-          toast.error("Erro ao resgatar código promocional. Tente novamente.");
-          setIsSubmitting(false);
-          return;
+        return (count || 0) + 1;
+      };
+
+      // If promo code is applied OR tournament is free, skip payment and mark as paid directly
+      const isFreeEntry = validatedPromo || entryFee === 0;
+
+      if (isFreeEntry) {
+        // If using promo code, redeem it first
+        if (validatedPromo) {
+          const { data: redeemResult, error: redeemError } = await supabase.rpc("redeem_promo_code", {
+            _promo_code_id: validatedPromo.promo_code_id,
+            _tournament_id: tournamentId,
+            _user_id: user.id,
+            _participation_id: currentParticipationId,
+          });
+
+          if (redeemError || !redeemResult) {
+            console.error("Error redeeming promo code:", redeemError);
+            toast.error("Erro ao resgatar código promocional. Tente novamente.");
+            setIsSubmitting(false);
+            return;
+          }
         }
 
-        // Update participation to paid status
+        // Calculate slot number before marking as paid (required by database trigger)
+        const calculatedSlot = await calculateSlotNumber();
+
+        // Update participation to paid status with slot number
         const { data: updatedParticipation, error: updateError } = await supabase
           .from("participations")
-          .update({ payment_status: "paid" })
+          .update({ 
+            payment_status: "paid",
+            slot_number: calculatedSlot,
+          })
           .eq("id", currentParticipationId)
           .select("unique_token, slot_number")
           .single();
@@ -481,18 +503,18 @@ export function TicketPurchaseModal({
         setUniqueToken(updatedParticipation.unique_token);
         setSlotNumber(updatedParticipation.slot_number);
         setStep("success");
-        toast.success("Inscrição gratuita confirmada!");
+        toast.success(validatedPromo ? "Inscrição gratuita confirmada!" : "Inscrição confirmada!");
         setIsSubmitting(false);
         return;
       }
 
-      // Create PIX payment
+      // Create PIX payment (only for paid tournaments without promo code)
       const { data: paymentData, error: paymentError } = await supabase.functions.invoke(
         "create-pix-payment",
         {
           body: {
             participationId: currentParticipationId,
-            amount: price,
+            amount: entryFee,
             description: `Ingresso ${tournamentGameMode} - ${tournamentName}`,
             payerEmail: formData.email,
             payerName: formData.fullName,
