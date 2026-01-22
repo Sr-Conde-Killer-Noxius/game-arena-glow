@@ -14,9 +14,11 @@ import {
   Info,
   Loader2,
   Gamepad2,
+  Crown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TicketPurchaseModal } from "@/components/TicketPurchaseModal";
+import { TournamentWinnersModal } from "@/components/TournamentWinnersModal";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -75,6 +77,10 @@ interface Tournament {
   prize_2nd: number | null;
   prize_3rd: number | null;
   prize_mvp: number | null;
+  winner_1st_id: string | null;
+  winner_2nd_id: string | null;
+  winner_3rd_id: string | null;
+  winner_mvp_id: string | null;
 }
 
 const defaultRules = [
@@ -96,10 +102,13 @@ const defaultRequirements = [
 export default function TournamentPage() {
   const { gameId } = useParams<{ gameId: string }>();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [finishedTournaments, setFinishedTournaments] = useState<Tournament[]>([]);
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
   const [participantCounts, setParticipantCounts] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isWinnersModalOpen, setIsWinnersModalOpen] = useState(false);
+  const [selectedFinishedTournament, setSelectedFinishedTournament] = useState<Tournament | null>(null);
 
   const gameName = gameId ? gameNames[gameId] || gameId : "Jogo";
   const gameImage = gameId ? gameImages[gameId] : freefireImg;
@@ -124,7 +133,14 @@ export default function TournamentPage() {
         return;
       }
 
-      setTournaments(data || []);
+      // Map data to include winner fields (may be undefined from DB until types regenerate)
+      setTournaments((data || []).map((t: any) => ({
+        ...t,
+        winner_1st_id: t.winner_1st_id || null,
+        winner_2nd_id: t.winner_2nd_id || null,
+        winner_3rd_id: t.winner_3rd_id || null,
+        winner_mvp_id: t.winner_mvp_id || null,
+      })));
 
       // Fetch participant counts from public counters table
       if (data && data.length > 0) {
@@ -142,6 +158,22 @@ export default function TournamentPage() {
           setParticipantCounts(counts);
         }
       }
+
+      // Fetch finished tournaments for this game
+      const { data: finishedData } = await supabase
+        .from("tournaments")
+        .select("*")
+        .eq("game", gameId as "codmobile" | "cs2" | "freefire" | "pubg" | "valorant" | "wildrift")
+        .eq("status", "finished")
+        .order("end_date", { ascending: false });
+
+      setFinishedTournaments((finishedData || []).map((t: any) => ({
+        ...t,
+        winner_1st_id: t.winner_1st_id || null,
+        winner_2nd_id: t.winner_2nd_id || null,
+        winner_3rd_id: t.winner_3rd_id || null,
+        winner_mvp_id: t.winner_mvp_id || null,
+      })));
 
       setIsLoading(false);
     };
@@ -254,6 +286,11 @@ export default function TournamentPage() {
   const handleBuyTicket = (tournament: Tournament) => {
     setSelectedTournament(tournament);
     setIsModalOpen(true);
+  };
+
+  const handleViewResults = (tournament: Tournament) => {
+    setSelectedFinishedTournament(tournament);
+    setIsWinnersModalOpen(true);
   };
 
   // Loading state
@@ -645,6 +682,58 @@ export default function TournamentPage() {
             );
           })}
         </div>
+
+        {/* Finished Tournaments Section */}
+        {finishedTournaments.length > 0 && (
+          <div className="mt-12">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
+                <Crown className="text-muted-foreground" size={20} />
+              </div>
+              <h2 className="font-display font-bold text-lg lg:text-xl">Torneios Finalizados</h2>
+            </div>
+
+            <div className="space-y-3">
+              {finishedTournaments.map((tournament) => (
+                <div
+                  key={tournament.id}
+                  className="bg-card border border-border rounded-xl p-4 cursor-pointer hover:border-primary/30 transition-colors"
+                  onClick={() => handleViewResults(tournament)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="inline-flex items-center gap-1.5 bg-muted text-muted-foreground px-2.5 py-0.5 rounded-full text-xs font-medium">
+                          <Trophy size={12} />
+                          Finalizado
+                        </span>
+                      </div>
+                      <h3 className="font-display font-bold text-sm sm:text-base">
+                        {tournament.name}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {gameModeNames[tournament.game_mode] || tournament.game_mode}
+                        {tournament.end_date && ` • Encerrado em ${formatDate(tournament.end_date)}`}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Premiação</p>
+                      <p className="font-display font-bold text-sm text-primary">
+                        {formatCurrency(Number(tournament.prize_pool))}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <Button variant="outline" size="sm" className="w-full gap-2">
+                      <Trophy size={14} />
+                      Ver Resultados
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Purchase Modal */}
@@ -658,6 +747,28 @@ export default function TournamentPage() {
           tournamentGameMode={selectedTournament.game_mode}
           tournamentDate={selectedTournament.start_date}
           entryFee={Number(selectedTournament.entry_fee)}
+        />
+      )}
+
+      {/* Winners Modal */}
+      {selectedFinishedTournament && (
+        <TournamentWinnersModal
+          isOpen={isWinnersModalOpen}
+          onClose={() => {
+            setIsWinnersModalOpen(false);
+            setSelectedFinishedTournament(null);
+          }}
+          tournamentId={selectedFinishedTournament.id}
+          tournamentName={selectedFinishedTournament.name}
+          gameMode={selectedFinishedTournament.game_mode}
+          prize1st={selectedFinishedTournament.prize_1st}
+          prize2nd={selectedFinishedTournament.prize_2nd}
+          prize3rd={selectedFinishedTournament.prize_3rd}
+          prizeMvp={selectedFinishedTournament.prize_mvp}
+          winner1stId={selectedFinishedTournament.winner_1st_id}
+          winner2ndId={selectedFinishedTournament.winner_2nd_id}
+          winner3rdId={selectedFinishedTournament.winner_3rd_id}
+          winnerMvpId={selectedFinishedTournament.winner_mvp_id}
         />
       )}
     </div>
