@@ -421,6 +421,10 @@ export type Database = {
           start_date_pending: boolean
           status: Database["public"]["Enums"]["tournament_status"]
           updated_at: string
+          winner_1st_id: string | null
+          winner_2nd_id: string | null
+          winner_3rd_id: string | null
+          winner_mvp_id: string | null
         }
         Insert: {
           banner_url?: string | null
@@ -447,6 +451,10 @@ export type Database = {
           start_date_pending?: boolean
           status?: Database["public"]["Enums"]["tournament_status"]
           updated_at?: string
+          winner_1st_id?: string | null
+          winner_2nd_id?: string | null
+          winner_3rd_id?: string | null
+          winner_mvp_id?: string | null
         }
         Update: {
           banner_url?: string | null
@@ -473,8 +481,41 @@ export type Database = {
           start_date_pending?: boolean
           status?: Database["public"]["Enums"]["tournament_status"]
           updated_at?: string
+          winner_1st_id?: string | null
+          winner_2nd_id?: string | null
+          winner_3rd_id?: string | null
+          winner_mvp_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tournaments_winner_1st_id_fkey"
+            columns: ["winner_1st_id"]
+            isOneToOne: false
+            referencedRelation: "participations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournaments_winner_2nd_id_fkey"
+            columns: ["winner_2nd_id"]
+            isOneToOne: false
+            referencedRelation: "participations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournaments_winner_3rd_id_fkey"
+            columns: ["winner_3rd_id"]
+            isOneToOne: false
+            referencedRelation: "participations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournaments_winner_mvp_id_fkey"
+            columns: ["winner_mvp_id"]
+            isOneToOne: false
+            referencedRelation: "participations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

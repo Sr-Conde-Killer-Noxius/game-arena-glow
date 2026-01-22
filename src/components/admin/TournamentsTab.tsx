@@ -1,19 +1,26 @@
 import { useState, useEffect } from "react";
-import { Plus, RefreshCw, Edit2, Trash2, Trophy, Users } from "lucide-react";
+import { Plus, RefreshCw, Edit2, Trash2, Trophy, Users, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn, formatCurrency } from "@/lib/utils";
 import { TournamentForm } from "./TournamentForm";
 import { RoomReportModal } from "./RoomReportModal";
+import { WinnerSelectionModal } from "./WinnerSelectionModal";
 import type { Database } from "@/integrations/supabase/types";
 
 type GameType = Database["public"]["Enums"]["game_type"];
 type GameMode = Database["public"]["Enums"]["game_mode"];
 type TournamentStatus = Database["public"]["Enums"]["tournament_status"];
 
-// Use the full database type to ensure all fields are included
-type Tournament = Database["public"]["Tables"]["tournaments"]["Row"];
+// Extended type to include winner fields that were just added
+type BaseTournament = Database["public"]["Tables"]["tournaments"]["Row"];
+type Tournament = BaseTournament & {
+  winner_1st_id?: string | null;
+  winner_2nd_id?: string | null;
+  winner_3rd_id?: string | null;
+  winner_mvp_id?: string | null;
+};
 
 export function TournamentsTab() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
@@ -21,6 +28,7 @@ export function TournamentsTab() {
   const [showForm, setShowForm] = useState(false);
   const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
   const [roomReportTournament, setRoomReportTournament] = useState<Tournament | null>(null);
+  const [winnerSelectionTournament, setWinnerSelectionTournament] = useState<Tournament | null>(null);
 
   useEffect(() => {
     fetchTournaments();
@@ -35,7 +43,14 @@ export function TournamentsTab() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setTournaments(data || []);
+      // Map data to include winner fields
+      setTournaments((data || []).map((t: any) => ({
+        ...t,
+        winner_1st_id: t.winner_1st_id || null,
+        winner_2nd_id: t.winner_2nd_id || null,
+        winner_3rd_id: t.winner_3rd_id || null,
+        winner_mvp_id: t.winner_mvp_id || null,
+      })));
     } catch (err) {
       console.error("Error fetching tournaments:", err);
       toast.error("Erro ao carregar torneios");
@@ -169,6 +184,17 @@ export function TournamentsTab() {
                   <Users size={14} />
                   Sala
                 </Button>
+                {(t.status === "finished" || t.status === "in_progress") && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-amber-500 hover:bg-amber-500/10"
+                    onClick={() => setWinnerSelectionTournament(t)}
+                  >
+                    <Crown size={14} />
+                    Vencedores
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -212,6 +238,25 @@ export function TournamentsTab() {
           tournamentName={roomReportTournament.name}
           gameMode={roomReportTournament.game_mode}
           onClose={() => setRoomReportTournament(null)}
+        />
+      )}
+
+      {winnerSelectionTournament && (
+        <WinnerSelectionModal
+          isOpen={!!winnerSelectionTournament}
+          onClose={() => setWinnerSelectionTournament(null)}
+          onSuccess={fetchTournaments}
+          tournamentId={winnerSelectionTournament.id}
+          tournamentName={winnerSelectionTournament.name}
+          gameMode={winnerSelectionTournament.game_mode}
+          prize1st={winnerSelectionTournament.prize_1st}
+          prize2nd={winnerSelectionTournament.prize_2nd}
+          prize3rd={winnerSelectionTournament.prize_3rd}
+          prizeMvp={winnerSelectionTournament.prize_mvp}
+          currentWinner1st={winnerSelectionTournament.winner_1st_id}
+          currentWinner2nd={winnerSelectionTournament.winner_2nd_id}
+          currentWinner3rd={winnerSelectionTournament.winner_3rd_id}
+          currentWinnerMvp={winnerSelectionTournament.winner_mvp_id}
         />
       )}
     </div>
