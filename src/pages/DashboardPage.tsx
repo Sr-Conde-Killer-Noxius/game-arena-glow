@@ -211,15 +211,16 @@ export default function DashboardPage() {
               <div className="w-10 h-10 sm:w-12 sm:h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-6">
+            <div className="flex gap-3 sm:gap-4 lg:gap-6 overflow-x-auto pb-4 scrollbar-hide">
               {games.map((game) => (
-                <GameCard
-                  key={game.id}
-                  name={game.name}
-                  image={game.image}
-                  isActive={game.isActive}
-                  onClick={() => handleGameClick(game.id)}
-                />
+                <div key={game.id} className="flex-shrink-0 w-36 sm:w-44 lg:w-48">
+                  <GameCard
+                    name={game.name}
+                    image={game.image}
+                    isActive={game.isActive}
+                    onClick={() => handleGameClick(game.id)}
+                  />
+                </div>
               ))}
             </div>
           )}
