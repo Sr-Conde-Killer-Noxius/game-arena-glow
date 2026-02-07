@@ -105,6 +105,41 @@ export function TicketPurchaseModal({
   };
   const partnersCount = getPartnersCount();
 
+  // Duplicate Game ID validation
+  const getDuplicateGameIds = (): Record<string, string> => {
+    if (partnersCount === 0) return {};
+    const errors: Record<string, string> = {};
+    const ids: { field: string; label: string; value: string }[] = [];
+
+    if (formData.playerGameId.trim()) {
+      ids.push({ field: "playerGameId", label: "Jogador Principal", value: formData.playerGameId.trim() });
+    }
+    if (partnersCount >= 1 && formData.partnerGameId.trim()) {
+      ids.push({ field: "partnerGameId", label: "Parceiro 1", value: formData.partnerGameId.trim() });
+    }
+    if (partnersCount >= 2 && formData.partner2GameId.trim()) {
+      ids.push({ field: "partner2GameId", label: "2º Parceiro", value: formData.partner2GameId.trim() });
+    }
+    if (partnersCount >= 3 && formData.partner3GameId.trim()) {
+      ids.push({ field: "partner3GameId", label: "3º Parceiro", value: formData.partner3GameId.trim() });
+    }
+
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = 0; j < i; j++) {
+        if (ids[i].value === ids[j].value) {
+          errors[ids[i].field] = `ID duplicado com ${ids[j].label}`;
+          if (!errors[ids[j].field]) {
+            errors[ids[j].field] = `ID duplicado com ${ids[i].label}`;
+          }
+        }
+      }
+    }
+    return errors;
+  };
+
+  const duplicateErrors = getDuplicateGameIds();
+  const hasDuplicates = Object.keys(duplicateErrors).length > 0;
+
   // Load profile data when modal opens
   useEffect(() => {
     if (!isOpen) return;
@@ -872,7 +907,11 @@ export function TicketPurchaseModal({
                         setFormData({ ...formData, partnerGameId: e.target.value })
                       }
                       required
+                      className={duplicateErrors.partnerGameId ? "border-destructive" : ""}
                     />
+                    {duplicateErrors.partnerGameId && (
+                      <p className="text-xs text-destructive mt-1">{duplicateErrors.partnerGameId}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -914,7 +953,11 @@ export function TicketPurchaseModal({
                         setFormData({ ...formData, partner2GameId: e.target.value })
                       }
                       required
+                      className={duplicateErrors.partner2GameId ? "border-destructive" : ""}
                     />
+                    {duplicateErrors.partner2GameId && (
+                      <p className="text-xs text-destructive mt-1">{duplicateErrors.partner2GameId}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -956,7 +999,11 @@ export function TicketPurchaseModal({
                         setFormData({ ...formData, partner3GameId: e.target.value })
                       }
                       required
+                      className={duplicateErrors.partner3GameId ? "border-destructive" : ""}
                     />
+                    {duplicateErrors.partner3GameId && (
+                      <p className="text-xs text-destructive mt-1">{duplicateErrors.partner3GameId}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1020,6 +1067,18 @@ export function TicketPurchaseModal({
 
             {/* Submit */}
             <div className="pt-4 border-t border-border">
+              {hasDuplicates && (
+                <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 mb-4 flex items-start gap-3">
+                  <AlertCircle className="text-destructive shrink-0 mt-0.5" size={18} />
+                  <div>
+                    <p className="font-medium text-destructive text-sm">IDs duplicados detectados</p>
+                    <p className="text-xs text-destructive/80 mt-1">
+                      Este jogador já foi vinculado à equipe. Insira um ID JPG exclusivo para cada parceiro.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between mb-4">
                 <span className="text-muted-foreground">Total:</span>
                 <div className="text-right">
@@ -1045,7 +1104,7 @@ export function TicketPurchaseModal({
                 variant="default"
                 size="lg"
                 className="w-full"
-                disabled={isSubmitting}
+                disabled={isSubmitting || hasDuplicates}
               >
                 {isSubmitting ? (
                   <div className="flex items-center gap-2">
