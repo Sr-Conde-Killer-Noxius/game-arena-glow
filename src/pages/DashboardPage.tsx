@@ -20,7 +20,7 @@ import pubgImg from "@/assets/games/pubg.jpg";
 type GameType = Database["public"]["Enums"]["game_type"];
 
 // Base game data with images
-const gameImages: Record<GameType, string> = {
+const gameImages: Partial<Record<GameType, string>> = {
   freefire: freefireImg,
   wildrift: wildriftImg,
   valorant: valorantImg,
@@ -29,16 +29,18 @@ const gameImages: Record<GameType, string> = {
   pubg: pubgImg,
 };
 
-const gameNames: Record<GameType, string> = {
+const gameNames: Partial<Record<GameType, string>> = {
   freefire: "Free Fire",
   wildrift: "LoL: Wild Rift",
   valorant: "Valorant",
   codmobile: "CoD Mobile",
   cs2: "CS2",
   pubg: "PUBG Mobile",
+  clashroyale: "Clash Royale",
+  fortnite: "Fortnite",
 };
 
-const allGameTypes: GameType[] = ["freefire", "wildrift", "valorant", "codmobile", "cs2", "pubg"];
+const allGameTypes: GameType[] = ["freefire", "wildrift", "valorant", "codmobile", "cs2", "pubg", "clashroyale", "fortnite"];
 
 interface GameData {
   id: GameType;
@@ -69,28 +71,31 @@ export default function DashboardPage() {
       if (error) throw error;
 
       // Count active tournaments per game
-      const tournamentCounts: Record<GameType, number> = {
+      const tournamentCounts: Partial<Record<GameType, number>> = {
         freefire: 0,
         wildrift: 0,
         valorant: 0,
         codmobile: 0,
         cs2: 0,
         pubg: 0,
+        clashroyale: 0,
+        fortnite: 0,
       };
 
       tournaments?.forEach((t) => {
-        if (t.game && tournamentCounts[t.game as GameType] !== undefined) {
-          tournamentCounts[t.game as GameType]++;
+        const game = t.game as GameType;
+        if (game && game in tournamentCounts) {
+          tournamentCounts[game] = (tournamentCounts[game] || 0) + 1;
         }
       });
 
       // Build games array - games with tournaments are active
       const gamesData: GameData[] = allGameTypes.map((gameType) => ({
         id: gameType,
-        name: gameNames[gameType],
-        image: gameImages[gameType],
-        isActive: tournamentCounts[gameType] > 0,
-        tournamentCount: tournamentCounts[gameType],
+        name: gameNames[gameType] || gameType,
+        image: gameImages[gameType] || "",
+        isActive: (tournamentCounts[gameType] || 0) > 0,
+        tournamentCount: tournamentCounts[gameType] || 0,
       }));
 
       // Sort: active games first
