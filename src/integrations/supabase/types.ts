@@ -14,6 +14,125 @@ export type Database = {
   }
   public: {
     Tables: {
+      friendships: {
+        Row: {
+          created_at: string
+          id: string
+          receiver_id: string
+          sender_id: string
+          status: Database["public"]["Enums"]["friendship_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          receiver_id: string
+          sender_id: string
+          status?: Database["public"]["Enums"]["friendship_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          receiver_id?: string
+          sender_id?: string
+          status?: Database["public"]["Enums"]["friendship_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "friendships_receiver_id_fkey"
+            columns: ["receiver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friendships_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      games: {
+        Row: {
+          banner_url: string | null
+          created_at: string
+          display_order: number
+          id: string
+          image_url: string | null
+          is_active: boolean
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          banner_url?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          banner_url?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          message: string | null
+          read: boolean
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message?: string | null
+          read?: boolean
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message?: string | null
+          read?: boolean
+          title?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       participations: {
         Row: {
           cep: string | null
@@ -24,10 +143,13 @@ export type Database = {
           mercado_pago_payment_id: string | null
           partner_2_game_id: string | null
           partner_2_nick: string | null
+          partner_2_user_id: string | null
           partner_3_game_id: string | null
           partner_3_nick: string | null
+          partner_3_user_id: string | null
           partner_game_id: string | null
           partner_nick: string | null
+          partner_user_id: string | null
           payment_created_at: string | null
           payment_status: Database["public"]["Enums"]["payment_status"]
           player_game_id: string | null
@@ -52,10 +174,13 @@ export type Database = {
           mercado_pago_payment_id?: string | null
           partner_2_game_id?: string | null
           partner_2_nick?: string | null
+          partner_2_user_id?: string | null
           partner_3_game_id?: string | null
           partner_3_nick?: string | null
+          partner_3_user_id?: string | null
           partner_game_id?: string | null
           partner_nick?: string | null
+          partner_user_id?: string | null
           payment_created_at?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
           player_game_id?: string | null
@@ -80,10 +205,13 @@ export type Database = {
           mercado_pago_payment_id?: string | null
           partner_2_game_id?: string | null
           partner_2_nick?: string | null
+          partner_2_user_id?: string | null
           partner_3_game_id?: string | null
           partner_3_nick?: string | null
+          partner_3_user_id?: string | null
           partner_game_id?: string | null
           partner_nick?: string | null
+          partner_user_id?: string | null
           payment_created_at?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
           player_game_id?: string | null
@@ -100,6 +228,27 @@ export type Database = {
           whatsapp?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "participations_partner_2_user_id_fkey"
+            columns: ["partner_2_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "participations_partner_3_user_id_fkey"
+            columns: ["partner_3_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "participations_partner_user_id_fkey"
+            columns: ["partner_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "participations_tournament_id_fkey"
             columns: ["tournament_id"]
@@ -146,11 +295,14 @@ export type Database = {
           cep: string | null
           cpf: string | null
           created_at: string
+          display_id: string
+          email: string | null
           full_name: string | null
           hs_rate: number | null
           id: string
           is_banned: boolean
           kda_global: number | null
+          last_login_at: string | null
           points: number | null
           rank: Database["public"]["Enums"]["user_rank"]
           updated_at: string
@@ -162,11 +314,14 @@ export type Database = {
           cep?: string | null
           cpf?: string | null
           created_at?: string
+          display_id?: string
+          email?: string | null
           full_name?: string | null
           hs_rate?: number | null
           id: string
           is_banned?: boolean
           kda_global?: number | null
+          last_login_at?: string | null
           points?: number | null
           rank?: Database["public"]["Enums"]["user_rank"]
           updated_at?: string
@@ -178,11 +333,14 @@ export type Database = {
           cep?: string | null
           cpf?: string | null
           created_at?: string
+          display_id?: string
+          email?: string | null
           full_name?: string | null
           hs_rate?: number | null
           id?: string
           is_banned?: boolean
           kda_global?: number | null
+          last_login_at?: string | null
           points?: number | null
           rank?: Database["public"]["Enums"]["user_rank"]
           updated_at?: string
@@ -408,11 +566,19 @@ export type Database = {
           id: string
           max_participants: number | null
           name: string
+          optional_discord: boolean
+          optional_game_profile: boolean
+          optional_instagram: boolean
+          optional_whatsapp: boolean
           prize_1st: number | null
           prize_2nd: number | null
           prize_3rd: number | null
           prize_mvp: number | null
           prize_pool: number
+          require_discord: boolean
+          require_game_profile: boolean
+          require_instagram: boolean
+          require_whatsapp: boolean
           room_id: string | null
           room_password: string | null
           room_pending: boolean
@@ -438,11 +604,19 @@ export type Database = {
           id?: string
           max_participants?: number | null
           name: string
+          optional_discord?: boolean
+          optional_game_profile?: boolean
+          optional_instagram?: boolean
+          optional_whatsapp?: boolean
           prize_1st?: number | null
           prize_2nd?: number | null
           prize_3rd?: number | null
           prize_mvp?: number | null
           prize_pool?: number
+          require_discord?: boolean
+          require_game_profile?: boolean
+          require_instagram?: boolean
+          require_whatsapp?: boolean
           room_id?: string | null
           room_password?: string | null
           room_pending?: boolean
@@ -468,11 +642,19 @@ export type Database = {
           id?: string
           max_participants?: number | null
           name?: string
+          optional_discord?: boolean
+          optional_game_profile?: boolean
+          optional_instagram?: boolean
+          optional_whatsapp?: boolean
           prize_1st?: number | null
           prize_2nd?: number | null
           prize_3rd?: number | null
           prize_mvp?: number | null
           prize_pool?: number
+          require_discord?: boolean
+          require_game_profile?: boolean
+          require_instagram?: boolean
+          require_whatsapp?: boolean
           room_id?: string | null
           room_password?: string | null
           room_pending?: boolean
@@ -586,6 +768,20 @@ export type Database = {
         Args: { _tournament_id: string }
         Returns: undefined
       }
+      confirm_free_participation: {
+        Args: { _participation_id: string }
+        Returns: {
+          error_message: string
+          slot_number: number
+          success: boolean
+          unique_token: string
+        }[]
+      }
+      generate_display_id: { Args: never; Returns: string }
+      generate_formatted_token: {
+        Args: { game_prefix?: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -603,6 +799,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      update_user_last_login: { Args: { user_id: string }; Returns: undefined }
       validate_promo_code: {
         Args: { _code: string; _tournament_id: string; _user_id: string }
         Returns: Json
@@ -610,6 +807,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user" | "parceiro"
+      friendship_status: "pending" | "accepted" | "blocked"
       game_mode: "solo" | "dupla" | "trio" | "squad"
       game_type:
         | "freefire"
@@ -618,6 +816,13 @@ export type Database = {
         | "codmobile"
         | "cs2"
         | "pubg"
+        | "clashroyale"
+        | "fortnite"
+      notification_type:
+        | "friend_request"
+        | "friend_accepted"
+        | "tournament_invite"
+        | "tournament_result"
       payment_status: "pending" | "paid" | "failed" | "refunded"
       tournament_status:
         | "upcoming"
@@ -754,6 +959,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user", "parceiro"],
+      friendship_status: ["pending", "accepted", "blocked"],
       game_mode: ["solo", "dupla", "trio", "squad"],
       game_type: [
         "freefire",
@@ -762,6 +968,14 @@ export const Constants = {
         "codmobile",
         "cs2",
         "pubg",
+        "clashroyale",
+        "fortnite",
+      ],
+      notification_type: [
+        "friend_request",
+        "friend_accepted",
+        "tournament_invite",
+        "tournament_result",
       ],
       payment_status: ["pending", "paid", "failed", "refunded"],
       tournament_status: [
