@@ -51,13 +51,13 @@ export function TicketsTab() {
         .from("participations")
         .select(`
           *,
-          profiles:user_id (username, full_name, whatsapp),
+          profiles!participations_user_id_fkey (username, full_name, whatsapp),
           tournaments:tournament_id (name, entry_fee)
         `)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setParticipations(data || []);
+      setParticipations(data as any || []);
     } catch (err) {
       console.error("Error fetching participations:", err);
       toast.error("Erro ao carregar participações");

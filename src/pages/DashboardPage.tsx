@@ -27,6 +27,8 @@ const gameImages: Record<GameType, string> = {
   codmobile: codmobileImg,
   cs2: cs2Img,
   pubg: pubgImg,
+  clashroyale: "/placeholder.svg",
+  fortnite: "/placeholder.svg",
 };
 
 const gameNames: Record<GameType, string> = {
@@ -36,9 +38,11 @@ const gameNames: Record<GameType, string> = {
   codmobile: "CoD Mobile",
   cs2: "CS2",
   pubg: "PUBG Mobile",
+  clashroyale: "Clash Royale",
+  fortnite: "Fortnite",
 };
 
-const allGameTypes: GameType[] = ["freefire", "wildrift", "valorant", "codmobile", "cs2", "pubg"];
+const allGameTypes: GameType[] = ["freefire", "wildrift", "valorant", "codmobile", "cs2", "pubg", "clashroyale", "fortnite"];
 
 interface GameData {
   id: GameType;
@@ -76,6 +80,8 @@ export default function DashboardPage() {
         codmobile: 0,
         cs2: 0,
         pubg: 0,
+        clashroyale: 0,
+        fortnite: 0,
       };
 
       tournaments?.forEach((t) => {
