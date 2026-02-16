@@ -51,7 +51,7 @@ export function TicketsTab() {
         .from("participations")
         .select(`
           *,
-          profiles!participations_user_id_fkey (username, full_name, whatsapp),
+          profiles:user_id (username, full_name, whatsapp),
           tournaments:tournament_id (name, entry_fee)
         `)
         .order("created_at", { ascending: false });

@@ -108,8 +108,6 @@ export function TournamentsTab() {
       pubg: "PUBG",
       codmobile: "COD Mobile",
       wildrift: "Wild Rift",
-      clashroyale: "Clash Royale",
-      fortnite: "Fortnite",
     };
     return labels[game];
   };

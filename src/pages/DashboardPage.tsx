@@ -20,7 +20,7 @@ import pubgImg from "@/assets/games/pubg.jpg";
 type GameType = Database["public"]["Enums"]["game_type"];
 
 // Base game data with images
-const gameImages: Partial<Record<GameType, string>> = {
+const gameImages: Record<GameType, string> = {
   freefire: freefireImg,
   wildrift: wildriftImg,
   valorant: valorantImg,
@@ -29,18 +29,16 @@ const gameImages: Partial<Record<GameType, string>> = {
   pubg: pubgImg,
 };
 
-const gameNames: Partial<Record<GameType, string>> = {
+const gameNames: Record<GameType, string> = {
   freefire: "Free Fire",
   wildrift: "LoL: Wild Rift",
   valorant: "Valorant",
   codmobile: "CoD Mobile",
   cs2: "CS2",
   pubg: "PUBG Mobile",
-  clashroyale: "Clash Royale",
-  fortnite: "Fortnite",
 };
 
-const allGameTypes: GameType[] = ["freefire", "wildrift", "valorant", "codmobile", "cs2", "pubg", "clashroyale", "fortnite"];
+const allGameTypes: GameType[] = ["freefire", "wildrift", "valorant", "codmobile", "cs2", "pubg"];
 
 interface GameData {
   id: GameType;
@@ -71,31 +69,28 @@ export default function DashboardPage() {
       if (error) throw error;
 
       // Count active tournaments per game
-      const tournamentCounts: Partial<Record<GameType, number>> = {
+      const tournamentCounts: Record<GameType, number> = {
         freefire: 0,
         wildrift: 0,
         valorant: 0,
         codmobile: 0,
         cs2: 0,
         pubg: 0,
-        clashroyale: 0,
-        fortnite: 0,
       };
 
       tournaments?.forEach((t) => {
-        const game = t.game as GameType;
-        if (game && game in tournamentCounts) {
-          tournamentCounts[game] = (tournamentCounts[game] || 0) + 1;
+        if (t.game && tournamentCounts[t.game as GameType] !== undefined) {
+          tournamentCounts[t.game as GameType]++;
         }
       });
 
       // Build games array - games with tournaments are active
       const gamesData: GameData[] = allGameTypes.map((gameType) => ({
         id: gameType,
-        name: gameNames[gameType] || gameType,
-        image: gameImages[gameType] || "",
-        isActive: (tournamentCounts[gameType] || 0) > 0,
-        tournamentCount: tournamentCounts[gameType] || 0,
+        name: gameNames[gameType],
+        image: gameImages[gameType],
+        isActive: tournamentCounts[gameType] > 0,
+        tournamentCount: tournamentCounts[gameType],
       }));
 
       // Sort: active games first
@@ -211,16 +206,15 @@ export default function DashboardPage() {
               <div className="w-10 h-10 sm:w-12 sm:h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
             </div>
           ) : (
-            <div className="flex gap-3 sm:gap-4 lg:gap-6 overflow-x-auto pb-4 scrollbar-hide">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-6">
               {games.map((game) => (
-                <div key={game.id} className="flex-shrink-0 w-36 sm:w-44 lg:w-48">
-                  <GameCard
-                    name={game.name}
-                    image={game.image}
-                    isActive={game.isActive}
-                    onClick={() => handleGameClick(game.id)}
-                  />
-                </div>
+                <GameCard
+                  key={game.id}
+                  name={game.name}
+                  image={game.image}
+                  isActive={game.isActive}
+                  onClick={() => handleGameClick(game.id)}
+                />
               ))}
             </div>
           )}
